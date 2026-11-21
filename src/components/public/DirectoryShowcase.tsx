@@ -1,27 +1,76 @@
-import { ArrowRight, ArrowUpRight, CalendarDays, CircleDollarSign, Flame, Sparkles, Trophy, Users, Zap } from 'lucide-react'
-import { Link } from 'react-router-dom'
 import type { ReactNode } from 'react'
+import { ArrowRight, ArrowUpRight, Compass, Flame, GraduationCap, Sparkles, Target, CalendarDays } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import nexusHeroBackground from '../../assets/NexusHeroBg.jpg'
 import nexusHero from '../../assets/NexusHero.png'
 
-const spotlight: Record<string, { kicker: string; headline: string; detail: string; metric: string; metricLabel: string; icon: ReactNode; action: string }> = {
-  Discover: { kicker: 'YOUR NEXT MOVE STARTS HERE', headline: 'The right door is closer than you think.', detail: 'A living map of people, projects, and ways to get involved.', metric: '1,284', metricLabel: 'FRESH PATHS IN', icon: <Sparkles size={21} />, action: 'See what’s moving' },
-  Opportunities: { kicker: 'YOUR WORK DESERVES A BIGGER STAGE', headline: 'Find the work that finds you.', detail: 'Real roles with real teams. Make your next move count.', metric: '86', metricLabel: 'NEW THIS WEEK', icon: <Zap size={21} />, action: 'View featured roles' },
-  Projects: { kicker: 'OPEN IDEAS, OPEN DOORS', headline: 'Find a problem worth your weekends.', detail: 'Join a team with momentum, or bring a skill they’re missing.', metric: '327', metricLabel: 'PROJECTS SEEKING BUILDERS', icon: <Users size={21} />, action: 'Meet the teams' },
-  Services: { kicker: 'GOOD PEOPLE. GREAT WORK.', headline: 'Find the specialist your build needs.', detail: 'A trusted network of independent Web3 talent.', metric: '642', metricLabel: 'VERIFIED SPECIALISTS', icon: <Sparkles size={21} />, action: 'Browse services' },
-  Grants: { kicker: 'FUND THE WORK THAT MATTERS', headline: 'Make the idea fundable.', detail: 'Funding programs from the ecosystems that need your work.', metric: '$4.8m', metricLabel: 'OPEN FUNDING', icon: <CircleDollarSign size={21} />, action: 'Explore funding programs' },
-  Bounties: { kicker: 'SKILL IN. IMPACT OUT.', headline: 'Solve something. Get rewarded.', detail: 'Clear scopes, fair rewards, and work the ecosystem actually needs.', metric: '38', metricLabel: 'BOUNTIES OPEN NOW', icon: <Flame size={21} />, action: 'Pick a challenge' },
-  Hackathons: { kicker: 'YOUR NEXT ALL-NIGHTER, WITH PURPOSE', headline: 'One weekend can change everything.', detail: 'Find your team, pick a track, and ship something real.', metric: '$520k', metricLabel: 'PRIZES ON THE LINE', icon: <Trophy size={21} />, action: 'See the hackathons' },
-  Events: { kicker: 'SHOW UP. MEET YOUR PEOPLE.', headline: 'Good conversations change direction.', detail: 'Builder meetups, working sessions, and ecosystem gatherings.', metric: '24', metricLabel: 'EVENTS THIS MONTH', icon: <CalendarDays size={21} />, action: 'Find your next room' },
+export interface DirectoryShowcaseProps {
+  variant?: 'missions' | 'houses' | 'explore' | 'academy' | 'events'
+  kicker: string
+  headline: string
+  detail: string
+  metric: string
+  metricLabel: string
+  actionLabel: string
+  actionTo: string
+  icon?: ReactNode
+  onActionClick?: () => void
 }
 
-export default function DirectoryShowcase({ name }: { name: string }) {
-  const content = spotlight[name] ?? spotlight.Discover
-  return <section className={`directory-showcase directory-${name.toLowerCase().replaceAll(' ', '-')}`}>
-    <img className="directory-showcase-background" src={nexusHeroBackground} alt="" aria-hidden="true" />
-    <img className="directory-showcase-hero" src={nexusHero} alt="Nexus digital builder" />
-    <div className="directory-showcase-main"><span className="section-kicker">{content.kicker}</span><h2>{content.headline}</h2><p>{content.detail}</p><Link to={name === 'Projects' ? '/communities' : '/register'}>{content.action} <ArrowRight size={15} /></Link></div>
-    <div className="directory-showcase-side"><span className="showcase-symbol">{content.icon}</span><strong>{content.metric}</strong><small>{content.metricLabel}</small><button aria-label={`Explore ${name}`}><ArrowUpRight size={17} /></button></div>
-    <div className="showcase-ornament" aria-hidden="true"><i /><i /><i /></div>
-  </section>
+const DEFAULT_ICONS: Record<NonNullable<DirectoryShowcaseProps['variant']>, ReactNode> = {
+  missions: <Target size={21} />,
+  houses: <Flame size={21} />,
+  explore: <Compass size={21} />,
+  academy: <GraduationCap size={21} />,
+  events: <CalendarDays size={21} />,
+}
+
+export default function DirectoryShowcase({
+  variant = 'explore',
+  kicker,
+  headline,
+  detail,
+  metric,
+  metricLabel,
+  actionLabel,
+  actionTo,
+  icon,
+  onActionClick,
+}: DirectoryShowcaseProps) {
+  return (
+    <section className={`directory-showcase directory-${variant}`}>
+      <img
+        className="directory-showcase-background"
+        src={nexusHeroBackground}
+        alt=""
+        aria-hidden="true"
+      />
+      <img
+        className="directory-showcase-hero"
+        src={nexusHero}
+        alt="The Arena Spartan builder"
+      />
+      <div className="directory-showcase-main">
+        <span className="section-kicker">{kicker}</span>
+        <h2>{headline}</h2>
+        <p>{detail}</p>
+        <Link to={actionTo}>
+          {actionLabel} <ArrowRight size={15} />
+        </Link>
+      </div>
+      <div className="directory-showcase-side">
+        <span className="showcase-symbol">{icon ?? DEFAULT_ICONS[variant] ?? <Sparkles size={21} />}</span>
+        <strong>{metric}</strong>
+        <small>{metricLabel}</small>
+        <button
+          type="button"
+          onClick={onActionClick}
+          aria-label={actionLabel}
+        >
+          <ArrowUpRight size={17} />
+        </button>
+      </div>
+      <div className="showcase-ornament" aria-hidden="true"><i /><i /><i /></div>
+    </section>
+  )
 }

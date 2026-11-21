@@ -1,0 +1,340 @@
+1. Executive Summary
+What the current application actually is
+The codebase is a client-side React 19 + TypeScript + Vite static UI prototype (src/App.tsx, src/main.tsx). It implements a public landing page (/), 14 public directory/informational pages, client-side localStorage authentication/onboarding flows, and three role-partitioned workspace shells (member, organization, admin).
+Maturity
+Frontend UI shell: Prototype / visual mockup stage. Build (tsc -b && vite build) and lint (oxlint) succeed, and routing/navigation render cleanly.
+Business logic & persistence: Non-existent beyond localStorage user registration/session storage (src/app/AuthProvider.tsx) and ephemeral component-level useState toggles (e.g., bookmark icon state in ListingCard.tsx, unread boolean in NotificationExperience, resolved report titles in ModerationExperience).
+Backend / API / Web3: Zero backend server, zero database, zero API client, zero wallet/blockchain integration.
+What is already useful
+Clean Vite + React 19 + TypeScript + React Router v7 setup (package.json, src/App.tsx).
+Semantic route-slug utilities and layout shell structure (src/app/navigation.ts, src/layouts/AppLayout.tsx, src/components/PageScaffold.tsx, src/components/PageHeader.tsx).
+Reusable card/stat primitives (ListingCard.tsx, StatCard.tsx, EmptyState.tsx, Brand.tsx) and responsive drawer scrim mechanics (AppLayout.tsx, Sidebar.tsx).
+src/types/index.ts and src/lib/utils.ts contain domain helper stubs (though currently orphaned and misaligned with the new spec's XP/CP/House model).
+Largest gaps against Specification v1.0
+No backend, database, or authoritative ledger: Everything is hardcoded static arrays (src/data/listings.ts, inline arrays in PublicPageExperience.tsx and WorkspaceExperiences.tsx) or localStorage (AuthProvider.tsx).
+Incompatible account & role model: Uses 3 mutually exclusive roles (member | organization | admin) with separate registration paths, separate dashboards, and disjoint route gates (AuthGate.tsx), whereas the spec mandates one Arena account/identity, Spartan default membership, Newbie as an onboarding stage, permission-based capabilities (creators/sponsors/reviewers/mentors/Elders/Strategoi/Control Room), and no separate organization account type.
+Missing core domain systems:
+Houses: None of the 6 Houses (Scribes, Heralds, Artisans, Echoes, Forge Masters, Seers) exist; replaced by generic Web3 "Communities".
+Missions & Verification: No Mission entity, creator funding/XP reservation, submission & evidence capture, reviewer approval/rejection/resubmission, dispute resolution, expiry/refunds, or duplicate/fraud prevention.
+XP & Contribution Points (CP): No Lifetime vs. Spendable XP split, no auditable XP ledger, no Contribution Points model, no 30 configurable levels, and no 5 Ascendancy ranks.
+Product Shell: Navigation has ~28 routes across mismatched categories (Opportunities, Grants, Bounties, Communities, Services, Messages, etc.) instead of the 6 primary destinations (Home, Missions, Houses, Explore, Academy, Events) + Personal area (My Activity, My Profile) + gated Stewardship/Control Room.
+Out-of-scope MVP feature present: MessagesExperience (/messages) implements an in-app chat UI, which is explicitly excluded from MVP.
+Most important architectural risks
+Conflicting CSS layers (index.css + App.css + theme.css): theme.css appends a blanket !important override block (* { font-size: max(.875rem, 1em)!important; background-color: transparent!important; }) over two earlier incompatible themes, breaking typography hierarchy and mobile button layouts.
+Unsecured client-side auth & role switching: AuthProvider.tsx trusts localStorage and exposes 1-click admin demo login (AuthForm.tsx).
+Orphaned code & dead dependencies: src/data/mockData.ts (1,177 lines), src/types/index.ts, src/lib/utils.ts, 17 @radix-ui/* packages, and framer-motion are completely unused, creating false confidence that features exist.
+2. Repository Architecture Map
+Directory Structure
+Text
+/
+├── index.html                  # HTML entry; loads Inter/Outfit/JetBrains Mono, sets dark class
+├── package.json                # Vite 8, React 19, React Router 7, Tailwind 3, Radix UI (unused), Framer Motion (unused)
+├── tailwind.config.js          # Arena/cyber/neon palette tokens (largely unused in JSX)
+├── postcss.config.js           # tailwindcss + autoprefixer
+├── tsconfig.json / .app / .node
+├── vite.config.ts              # Vite dev server (0.0.0.0:3000)
+├── public/                     # favicon.svg, icons.svg
+└── src/
+    ├── main.tsx                # Imports index.css -> App.css -> theme.css, wraps App in BrowserRouter
+    ├── App.tsx                 # Top-level Routes, AuthEntry, ForbiddenPage
+    ├── index.css               # Tailwind directives + unused dark-indigo utility classes
+    ├── App.css                 # Base layout & dark-pink/charcoal styling
+    ├── theme.css               # Light navy/red override + blanket !important strict blue/white rules
+    ├── app/
+    │   ├── AuthProvider.tsx    # localStorage session + account registry + SHA-256 hashing
+    │   ├── authContext.ts      # UserRole ('member'|'organization'|'admin'), AuthUser, useAuth()
+    │   ├── authRoutes.ts       # homeForRole() mapping roles to 3 separate dashboards
+    │   ├── AppState.tsx        # Global search string + toast flash() state
+    │   ├── appStateContext.ts  # AppState context + useAppState()
+    │   └── navigation.ts       # PUBLIC_PAGES, MEMBER_PAGES, ORG_PAGES, ADMIN_PAGES, slug(), pagePath()
+    ├── layouts/
+    │   └── AppLayout.tsx       # Conditional Sidebar + Topbar + <Outlet />
+    ├── components/
+    │   ├── AuthGate.tsx        # Role & onboarding route guard
+    │   ├── Brand.tsx           # "thearena" logo link
+    │   ├── PageScaffold.tsx / PageHeader.tsx / StatCard.tsx / EmptyState.tsx
+    │   ├── Sidebar.tsx / Topbar.tsx / IconForPage.tsx
+    │   ├── ListingCard.tsx / FeedCard.tsx (unused) / ProfileForm.tsx
+    │   ├── WorkspaceOverview.tsx / WorkspacePageContent.tsx
+    │   ├── auth/               # AuthBrandPanel.tsx, AuthForm.tsx
+    │   ├── landing/            # HeroSection, OpportunityHighlights, CommunitySection, Newsletter, LandingFooter, SignalStrip (unused)
+    │   ├── public/             # DirectoryShowcase.tsx, PublicPageExperience.tsx
+    │   └── workspace/          # WorkspaceExperiences.tsx (15+ workspace screens in one file)
+    ├── pages/
+    │   ├── public/             # LandingPage.tsx, DirectoryPage.tsx, GeneralPage.tsx
+    │   ├── auth/               # AuthPage.tsx
+    │   ├── member/             # MemberPage.tsx
+    │   ├── organization/       # OrganizationPage.tsx
+    │   ├── admin/              # AdminPage.tsx
+    │   └── NotFoundPage.tsx
+    ├── data/
+    │   ├── listings.ts         # 4 hardcoded Listing items + 3 popularTopics
+    │   ├── pageContent.ts      # Page subtitle descriptions + unused feedItems
+    │   └── mockData.ts         # 1,177 lines of unused typed mock entities
+    ├── types/
+    │   └── index.ts            # 280 lines of domain interfaces (only imported by unused mockData.ts)
+    └── lib/
+        └── utils.ts            # Unused cn(), XP level helpers, status badge helpers
+Routing Map (src/App.tsx + src/app/navigation.ts)
+Route Pattern	Component	Access Gate
+/	LandingPage	Public (renders without Sidebar)
+/discover, /opportunities, /projects, /services, /grants, /hackathons, /bounties, /events	DirectoryPage	Public
+/communities, /learning-hub, /organizations, /resources, /discussions, /leaderboard	GeneralPage	Public
+/dashboard, /profile, /edit-profile, /my-projects, /my-services, /my-applications, /saved-items, /messages, /notifications, /achievements, /reputation, /settings	MemberPage	AuthGate roles={['member']}
+/organization/org-dashboard, /organization/create-opportunity, /organization/manage-applicants, /organization/analytics	OrganizationPage	AuthGate roles={['organization']}
+/admin/admin-dashboard, /admin/users, /admin/content-moderation, /admin/analytics	AdminPage	AuthGate roles={['admin']}
+/login, /register, /forgot-password, /onboarding	AuthEntry -> AuthPage	Unauthenticated / incomplete onboarding
+/forbidden, *	ForbiddenPage, NotFoundPage	Fallback
+Data, State & Integration Architecture
+Global State (AppState.tsx): Holds only search: string and toast: string.
+Auth State (AuthProvider.tsx): Reads/writes localStorage keys arena.session.v1 and arena.accounts.v1.
+Backend / API / Web3: None. No fetch, axios, WebSocket, Firebase, Supabase, Cloud SQL, or wallet SDK exists.
+3. Existing Feature Inventory
+Feature	Relevant Files	Implementation Status	Data Source	Dependencies	Responsive Status	Classification	Reason for Classification
+App Shell & Layout	src/layouts/AppLayout.tsx, src/components/PageScaffold.tsx, src/components/PageHeader.tsx	Working shell	Static config (pageContent.ts)	react-router-dom, AppState	Partially responsive	ADAPT	Good semantic scaffold, but PageHeader exposes Create opportunity on /opportunities to unauthorized users and needs unified Arena navigation.
+Sidebar & Navigation	src/components/Sidebar.tsx, src/app/navigation.ts, src/components/IconForPage.tsx	Working UI links; hardcoded XP & counts	Hardcoded arrays & strings (Lvl 08, 3 notifications)	useAuth, homeForRole	Partially responsive (drawer does not auto-close on link click; no desktop collapse)	ADAPT	Must align to 6 primary destinations + Personal area, add desktop collapse, auto-close mobile drawer on route change, and drive dynamic counts/XP from real state.
+Topbar & Global Search	src/components/Topbar.tsx, src/app/AppState.tsx	Partial (search only filters DirectoryPage; ⌘K is decorative; bell is toast-only)	React state (search)	useAppState, useAuth	Partially responsive (wrapped buttons & missing mobile nav on /)	ADAPT	Retain header structure; wire real ⌘K search modal/routing, real notification popover, XP/account controls, and mobile landing drawer/menu.
+Landing Page	src/pages/public/LandingPage.tsx, src/components/landing/*	Visual prototype	Hardcoded metrics (12.4k+) & listings.slice(0,3)	listings.ts, AppState.flash	Partially responsive (hero image/card overlap risk; landing-nav hidden on mobile with no drawer)	ADAPT	Keep visual hero/newsletter structure; update copy/metrics from hardcoded Web3 job board framing to Arena Houses/Missions/Academy and add mobile nav.
+Auth & Onboarding	src/app/AuthProvider.tsx, src/app/authContext.ts, src/app/authRoutes.ts, src/components/AuthGate.tsx, src/components/auth/*, src/pages/auth/AuthPage.tsx	Client-side localStorage prototype	localStorage (arena.session.v1, arena.accounts.v1)	Web Crypto API (SHA-256)	Responsive	REPLACE	Hardcoded 3-role split (member/organization/admin), localStorage credential store, broken onboarding sync, and demo admin login conflict with single-account permission-based backend auth.
+Directory Pages (Explore)	src/pages/public/DirectoryPage.tsx, src/components/public/DirectoryShowcase.tsx, src/components/ListingCard.tsx, src/data/listings.ts	Partial filter + static cards	4 hardcoded items in listings.ts	AppState.search	Responsive grid (auto-fit), minor image/header issues	ADAPT	Projects, Services, Discover show identical 4 listings; Events shows Hackathon; Trending/Newest sort and All filters are non-functional; count 1,284 is fake. Adapt into real Missions/Explore/Events views backed by real entities.
+Communities (Houses)	src/components/public/PublicPageExperience.tsx (CommunityDirectory), src/data/mockData.ts	UI only	4 hardcoded Web3 community tuples	None	Responsive	REPLACE	Uses generic Web3 communities instead of the 6 Arena Houses (Scribes, Heralds, Artisans, Echoes, Forge Masters, Seers) with tabbed House experiences and primary/secondary House membership.
+Learning Hub (Academy)	src/components/public/PublicPageExperience.tsx (LearningDirectory)	UI only	3 hardcoded course tuples	None	Partially responsive (hides progress & hero card <620px)	ADAPT	Useful layout skeleton; needs real Academy tracks, modules, progress persistence, and Mission/XP integration.
+Organizations Directory	src/components/public/PublicPageExperience.tsx (OrganizationDirectory)	UI only	4 hardcoded org tuples	None	Partially responsive (ecosystem chips may wrap awkwardly)	ADAPT	In the spec, organizations are profiles/sponsors within a single Arena account model rather than separate account roles. Adapt into sponsor/ecosystem profiles under Explore.
+Leaderboard	src/components/public/PublicPageExperience.tsx (Leaderboard)	UI only (inconsistent data)	Hardcoded podium + members arrays	None	Broken <620px (6 grid children in 4-col .rank-row, overflowing podium text)	ADAPT	Ranks by XP instead of Contribution Points, podium conflicts with table data, period buttons do nothing. Adapt to seasonal/all-time CP leaderboards.
+Resources & Discussions	src/components/public/PublicPageExperience.tsx (ResourceDirectory, DiscussionBoard)	UI only	Hardcoded tuples	AppState.flash	Partially responsive (hides resource summary/format <620px)	ADAPT	Keep lightweight templates if retained inside Explore/Academy, or consolidate under Explore/Houses as needed.
+Member Dashboard & Profile	src/components/WorkspaceOverview.tsx, src/components/workspace/WorkspaceExperiences.tsx (ProfileExperience, ProfileForm), src/pages/member/MemberPage.tsx	UI only / static	Hardcoded Jordan Davis, 2,450 XP, static arrays	useAuth (reads name/focus only on ProfileExperience)	Broken <620px (.profile-identity > .button renders duplicate text)	ADAPT	Retain layout structure; unify into Home + My Profile + My Activity, display Lifetime vs. Spendable XP, CP, Ascendancy rank, primary/secondary Houses, and persist profile edits.
+Projects, Services, Applications, Saved	src/components/workspace/WorkspaceExperiences.tsx	UI only	Hardcoded arrays / listings.ts	AppState.flash	Responsive	ADAPT / REMOVE	My Applications/Saved Items can adapt into My Activity (mission submissions, bookmarks, events). My Services is secondary/unverified against spec; My Projects needs clarity vs. Missions.
+Messages (In-App Chat)	src/components/workspace/WorkspaceExperiences.tsx (MessagesExperience)	UI only	Hardcoded 3 conversations	AppState.flash	Responsive	REMOVE	In-app messaging is explicitly excluded from MVP (Section 10).
+Notifications	src/components/workspace/WorkspaceExperiences.tsx (NotificationExperience)	UI only (unread boolean)	4 hardcoded alerts	None	Responsive	ADAPT	Keep list UI pattern; wire to real mission review, XP ledger, and event notifications plus Topbar bell state.
+Achievements & Reputation	src/components/workspace/WorkspaceExperiences.tsx (AchievementExperience, ReputationExperience)	UI only	6 hardcoded badges + 12-bar chart	None	Responsive	ADAPT	Adapt to real 30-level progression, 5 Ascendancy ranks, Lifetime/Spendable XP ledger breakdown, CP history, and configurable Achievements.
+Organization Studio	src/components/workspace/WorkspaceExperiences.tsx (OrganizationDashboard, ApplicantExperience, ProfileForm), src/pages/organization/OrganizationPage.tsx	UI only	Hardcoded stats & 4 applicants	useAuth, AppState.flash	Partially responsive (button text hidden via font-size:0 conflicted by theme.css)	REPLACE	Spec rejects separate organization accounts. Mission creation, funding/XP reservation, and applicant/submission review must belong to permissioned members/sponsors inside the shared shell.
+Admin Console	src/components/workspace/WorkspaceExperiences.tsx (AdminDashboard, ModerationExperience, AnalyticsExperience, RecordTable), src/pages/admin/AdminPage.tsx	UI only (ephemeral resolve filter)	Hardcoded reports & metrics	useAuth, AppState.flash	Partially responsive	REPLACE	Replace with permission-gated Stewardship Workspace (Elders / House-scoped Strategoi) and Control Room (authorized admins) inside the unified shell.
+Unused Data / Libs / Components	src/data/mockData.ts, src/types/index.ts, src/lib/utils.ts, src/components/FeedCard.tsx, src/components/landing/SignalStrip.tsx, feedItems in pageContent.ts	Dead code	Static mock data	@radix-ui/* (unused), clsx, tailwind-merge, framer-motion (unused)	N/A	REMOVE / ADAPT	Remove dead files (FeedCard, SignalStrip, mockData.ts) or salvage pure date/number helpers from utils.ts and replace types/index.ts with canonical Arena v1.0 schemas.
+4. Product Specification Gap Analysis
+Product Area	Status	Evidence & Gap Explanation
+A. Product shell & navigation	Conflicting implementation	src/app/navigation.ts and src/components/Sidebar.tsx expose 14 public pages + 12 member + 4 org + 4 admin routes, missing Home, Missions, Houses, Academy (called Learning Hub), My Activity, Stewardship, and Control Room. Desktop sidebar cannot collapse (App.css:10-11). Mobile drawer fails to auto-close on navigation. Landing page hides nav <700px with no menu drawer.
+B. Account & membership architecture	Conflicting implementation	src/app/authContext.ts:3 hardcodes `UserRole = 'member'
+C. Houses	Not implemented	None of the 6 Houses (Scribes, Heralds, Artisans, Echoes, Forge Masters, Seers) appear anywhere in src/. PublicPageExperience.tsx renders 4 generic Web3 communities instead. No tabbed House workspace, no Echoes cross-House outreach capability, and no separation from permissions/Ascendancy rank.
+D. Missions	Not implemented	The word/entity "Mission" does not exist in src/types/index.ts or src/data/. DirectoryPage.tsx only displays 4 static Listing cards (Opportunity, Grant, Bounty, Hackathon), and Create Opportunity (ProfileForm.tsx) is a non-persistent 5-field form. Zero mission lifecycle, XP funding/reservation, evidence capture, reviewer assignment, rejection/resubmission, disputes, expiry/refunds, or anti-fraud controls exist.
+E. XP, progression & rewards	Conflicting implementation	Sidebar.tsx:39-40 and WorkspaceOverview.tsx:28-29 hardcode "Level 8 · Builder" and "2,450 / 3,000 XP". Leaderboard ranks by XP (PublicPageExperience.tsx:91). src/lib/utils.ts:57-85 defines 6 levels (Explorer -> Pioneer), not 30 configurable levels. No Lifetime XP vs. Spendable XP, no auditable XP ledger, no Contribution Points (CP), no 5 Ascendancy ranks, and no configurable activity rewards/achievements.
+F. Leadership & administration	Conflicting implementation	OrganizationPage.tsx and AdminPage.tsx are gated by coarse organization and admin roles (App.tsx:28-33). No permission model exists, no Stewardship workspace for Elders, no House-scoped Strategoi oversight, and no real Control Room operations (configurability of levels/rewards, ledger adjustments, disputes).
+G. Events & Academy	UI only / Mock data only	Events in DirectoryPage.tsx:24 is literally an alias for Hackathons (item.kind === 'Hackathon'). Learning Hub in PublicPageExperience.tsx:59-65 renders 3 static tuples with non-functional buttons. No registration, attendance, mission linkage, or lesson tracking.
+H. Responsive mobile-first design	Partially implemented	Responsive breakpoints exist (1100px, 850px, 620px, 400px), and there is no separate mobile bottom nav (aligns with spec). However, theme.css !important global rules break text sizes, button layouts, podiums, rank rows, and profile edit buttons on mobile.
+5. Authentication, Accounts and Permissions Audit
+Current Model (src/app/AuthProvider.tsx, src/app/authContext.ts, src/components/AuthGate.tsx)
+Storage & Security: Credentials and sessions are stored unencrypted in browser localStorage (arena.accounts.v1, arena.session.v1) with client-side SHA-256 hashing (hashPassword). Anyone can edit localStorage to set role: "admin" or click the Administrator demo button in AuthForm.tsx:95.
+Account Split: Registration (AuthForm.tsx:80-83) requires choosing member or organization. AuthGate.tsx:9 blocks organization users from /profile, /achievements, /notifications, /reputation, /settings (MEMBER_PAGES), and blocks member users from creating opportunities (ORG_PAGES).
+Onboarding Bug: AuthProvider.tsx:109-112 (completeOnboarding) updates arena.session.v1 only, leaving arena.accounts.v1 untouched, so name and focus are lost on re-login. Furthermore, onboarding only captures display name and a generic dropdown (intent), not primary/secondary House selection or Newbie stage tracking.
+Required Changes for Specification v1.0
+Single Arena Account & Identity: Collapse member and organization into one UserAccount entity backed by server-side authentication (HTTP-only session cookies or short-lived JWT + OAuth/email verification). Remove demo role impersonation in production builds.
+Membership & Stage Model:
+Unauthenticated user = Visitor (read-only access to public pages).
+Authenticated user = Spartan by default (membershipStatus: 'spartan').
+Onboarding = Newbie stage (onboardingStage: 'newbie' | 'completed' + checklist milestones), not a separate role.
+Organizations become entity profiles (OrganizationProfile) owned/managed by permitted Spartan accounts (e.g., sponsors), not separate user login types.
+Explicit RBAC + Scoped Permissions: Replace roles={['admin']} in AuthGate with permission claims (e.g., missions.create, missions.review, house.steward scoped to houseId, stewardship.elder, admin.control_room, xp.adjust). Enforce every permission check on the backend API as well as in UI route guards (PermissionGate).
+6. Missions and XP Architecture Audit
+Current State
+Missions: Absent. src/data/listings.ts defines a 10-field Listing type for display cards; src/types/index.ts defines separate Opportunity, Bounty, Grant, Hackathon types (unused). None model mission states, budgets, evidence, or review workflows.
+XP & Reputation: Sidebar.tsx (2,450 / 3,000 XP), WorkspaceOverview.tsx (2,450 reputation), Leaderboard (3,840 XP), and ReputationExperience (2,450 REPUTATION POINTS) conflate XP and reputation and hardcode static numbers.
+Systems Required by Specification v1.0
+A. Mission Lifecycle & Verification Engine
+Mission Entity & Types: Support all spec categories (outreach/distribution, creative, writing/research, technical, learning, events/participation, community support, offline, collaboration, custom) with explicit policy validation blocking paid engagement-farming (no incentivized X likes, reposts, replies, follows, or views).
+State Machine: Draft -> Funded / Active (XP budget reserved) -> Paused / Cancelled (unused XP refunded) / Expired -> Completed / Settled.
+Submission & Evidence Lifecycle:
+Duplicate/fraud guard: uniqueness constraint (missionId, applicantId) per allowed attempt, evidence URL/file hash checks, rate limiting, and eligibility checks (House/level/Spartan status).
+Submission states: Submitted -> Under Review -> Approved (triggers atomic settlement) OR Changes Requested / Rejected (allows resubmission up to configurable limit) OR Disputed (escalates to Steward/Control Room).
+Reviewer Assignment: Creator-designated reviewers, House Strategoi/Elders, or verification rules, with conflict-of-interest checks (reviewer cannot approve own submission).
+B. Dual-Balance XP, Ledger & Contribution Points Architecture
+Dual XP Balances (derived or transactionally maintained):
+lifetimeXp: Monotonically increasing cumulative earned XP. Used for 30 configurable levels. Spending/allocating XP never reduces lifetimeXp.
+spendableXp: Available XP for funding missions or permitted Arena services.
+Append-Only Auditable XP Ledger (xp_ledger_entries):
+Immutable entries with id, userId, type (EARN | RESERVE | SPEND_ALLOCATE | RECEIVE | REFUND | ADMIN_ADJUSTMENT), deltaLifetime, deltaSpendable, referenceType (mission | submission | activity | admin), referenceId, actorId, reason, idempotencyKey, and createdAt.
+Mission funding atomically decrements spendableXp into a mission escrow/reservation (RESERVE). Approvals settle from reserved pool to contributor (RECEIVE), and cancellations/expiries return unspent escrow (REFUND).
+Contribution Points (contribution_ledger_entries):
+Completely separate from XP (spendableXp / lifetimeXp).
+Non-spendable, non-transferable, and drives Seasonal and All-Time Leaderboards.
+Progression & Ascendancy:
+30 Levels: Driven by configurable level_configs table/thresholds against lifetimeXp.
+5 Ascendancy Ranks: Explicit status/rank model distinct from House membership and leadership permissions; leadership appointments (Elder, Strategos, etc.) require explicit administrative grant, never automatic XP triggers.
+7. Responsive Design Audit
+Note: Findings below are from static CSS/JSX inspection (src/App.css, src/theme.css, src/index.css, and component JSX). Live multi-viewport browser testing must be run in Phase 7.
+Area / Component	Files	Desktop (>1100px)	Tablet (621px–1100px)	Mobile (<=620px, <=400px)	Specific Issues Identified
+Global CSS Cascade	src/main.tsx, src/index.css, src/App.css, src/theme.css, index.html	Broken hierarchy	Broken hierarchy	Broken hierarchy	theme.css:272-284 applies * { font-size: max(.875rem, 1em)!important; background-color: transparent!important; } and button, a { min-height: 2.5rem }, flattening all micro-labels/badges/tags and bloating card heights across all viewports.
+Sidebar & Drawer	src/components/Sidebar.tsx, src/App.css:10-11,101-102, src/theme.css:179-190	Fixed 256px (cannot collapse)	Fixed 232px down to 850px; drawer <=850px	Left slide-over drawer (min(290px, 85vw))	1) No collapse toggle on desktop (>850px), violating spec. 2) Clicking a NavLink inside Sidebar on mobile does not invoke onClose(), trapping user behind .mobile-scrim.
+Topbar & Landing Nav	src/components/Topbar.tsx, src/App.css:73,102-103, src/theme.css:203-220,630-640	OK	OK	Broken on /	On / (landing=true), .landing-nav (Explore, How it works, Community) is display: none at <=700px (theme.css:638) and AppLayout.tsx:16 omits Sidebar on /, leaving mobile visitors with zero navigation links on the landing page.
+Landing Hero	src/components/landing/HeroSection.tsx, src/theme.css:406-717	OK	Crowded (74% hero img behind card)	Overlap risk	Uses min-height: 850px/900px with absolute .hero-person (bottom: 145px; height: 48%) and negative margins (width: calc(100% + ...)). hero-metrics stacks into 2x2 grid cleanly, but hero-person can collide with hero-feature-card.
+Directory Showcase	src/components/public/DirectoryShowcase.tsx, src/theme.css:269-384	OK	OK (3-col)	Tight (auto 150px image row)	Long titles at forced 16px+ body text can crowd the right stat column at 320px–375px.
+Leaderboard	src/components/public/PublicPageExperience.tsx:90-92, src/theme.css:205-207,245,260	OK	OK	Broken layout	.rank-row has 6 child elements, hides 1 (.rank-meter), leaving 5 children in a 4-column grid (grid-template-columns: 24px 32px minmax(0,1fr) 48px), forcing .rank-change onto a wrapped second row. .podium-person fixed heights (108px/129px/160px) clip under 16px+ !important font sizing.
+Profile & Forms	src/components/workspace/WorkspaceExperiences.tsx:60-70, src/components/ProfileForm.tsx, src/theme.css:6	OK	OK	Broken button text	At <=620px, theme.css:6 sets .profile-identity>.button { font-size: 0 } and .profile-identity>.button:after { content: "Edit" }. Because theme.css:279 sets *{font-size:max(.875rem,1em)!important}, both "Edit profile" and "Edit" render together.
+Data Rows & Tables	PublicPageExperience.tsx, WorkspaceExperiences.tsx	OK	OK	Cramped / wraps	resource-row, discussion-row, applicant-row use fixed-pixel grid tracks (theme.css:243-244, theme.css:6); organization-featured filter buttons lack flex-wrap: wrap.
+Mobile Bottom Nav	N/A	N/A	N/A	Compliant	Verified no separate mobile-only bottom navigation exists (AppLayout.tsx, Sidebar.tsx).
+8. KEEP / ADAPT / BUILD / REPLACE / REMOVE / INVESTIGATE Matrix
+Component / Area	Classification	Repository Evidence	Action Summary
+Build toolchain (vite.config.ts, tsconfig.*.json)	KEEP	package.json, vite.config.ts	Keep Vite 8 + React 19 + TypeScript setup.
+AppLayout.tsx, PageScaffold.tsx, PageHeader.tsx, StatCard.tsx, EmptyState.tsx, Brand.tsx	ADAPT	src/layouts/AppLayout.tsx, src/components/*	Keep layout skeletons; remove unauthorized Create opportunity shortcut in PageHeader and connect real state/permissions.
+Sidebar.tsx, Topbar.tsx, navigation.ts	ADAPT	src/components/Sidebar.tsx, src/components/Topbar.tsx, src/app/navigation.ts	Restructure nav to 6 primary destinations + Personal area + gated Stewardship/Control Room; add desktop collapse + mobile auto-close + landing mobile menu + real ⌘K search & notification drawer.
+AuthProvider.tsx, authContext.ts, authRoutes.ts, AuthGate.tsx, AuthForm.tsx	REPLACE	src/app/AuthProvider.tsx, src/components/AuthGate.tsx, src/components/auth/AuthForm.tsx	Replace localStorage multi-role auth with backend session auth, single Arena account, Spartan default status, Newbie onboarding stage, and explicit PermissionGate.
+CSS Architecture (index.css, App.css, theme.css)	REPLACE / CONSOLIDATE	src/main.tsx, src/index.css, src/App.css, src/theme.css	Remove the 3-way CSS conflict and theme.css !important blanket overrides; establish a single clean design-token system (either consolidated Tailwind CSS or clean token stylesheet).
+LandingPage.tsx & landing/*	ADAPT	src/pages/public/LandingPage.tsx, src/components/landing/*	Retain structure and hero assets (NexusHero.png, NexusHeroBg.jpg); align messaging to Houses/Missions/Academy and fix mobile hero/nav.
+DirectoryPage.tsx, ListingCard.tsx	ADAPT	src/pages/public/DirectoryPage.tsx, src/components/ListingCard.tsx	Evolve into Missions and Explore / Events directories with working server-backed filters, sorting, and detail/submission routes.
+CommunityDirectory (PublicPageExperience.tsx)	REPLACE	src/components/public/PublicPageExperience.tsx:51-57	Replace generic communities with the 6 Houses (Scribes, Heralds, Artisans, Echoes, Forge Masters, Seers) with tabbed House views and Echoes outreach integration.
+LearningDirectory (PublicPageExperience.tsx)	ADAPT	src/components/public/PublicPageExperience.tsx:59-65	Evolve into Academy with tracks, lessons, completion state, and mission/XP links.
+Leaderboard (PublicPageExperience.tsx)	ADAPT	src/components/public/PublicPageExperience.tsx:90-92	Switch metric from XP to Contribution Points, fix podium/list mismatch, wire Seasonal vs. All-Time filtering, and fix mobile grid.
+WorkspaceOverview.tsx, ProfileExperience, NotificationExperience, AchievementExperience, ReputationExperience	ADAPT	src/components/WorkspaceOverview.tsx, src/components/workspace/WorkspaceExperiences.tsx	Recompose into Home, My Profile, and My Activity with real Lifetime/Spendable XP, CP, 30 levels, 5 Ascendancy ranks, and Houses.
+OrganizationPage.tsx, OrganizationDashboard, ApplicantExperience, ProfileForm	REPLACE	src/pages/organization/OrganizationPage.tsx, src/components/workspace/WorkspaceExperiences.tsx:115-132	Replace with permission-gated Mission Creator / Sponsor flows inside the unified shell (no separate org account).
+AdminPage.tsx, AdminDashboard, ModerationExperience, AnalyticsExperience	REPLACE	src/pages/admin/AdminPage.tsx, src/components/workspace/WorkspaceExperiences.tsx:125-150	Replace with House-scoped Stewardship Workspace (Elders/Strategoi) and Control Room (admins) with real config/ledger/dispute tooling.
+MessagesExperience (/messages)	REMOVE	src/components/workspace/WorkspaceExperiences.tsx:86-91	Explicitly out of scope for MVP (Section 10: no in-app messaging).
+Dead files & unused packages (mockData.ts, FeedCard.tsx, SignalStrip.tsx, hero.png, @radix-ui/*, framer-motion)	REMOVE / INVESTIGATE	src/data/mockData.ts, src/components/FeedCard.tsx, package.json	Remove unused dead code (FeedCard, SignalStrip, mockData.ts, feedItems). Decide whether to keep @radix-ui/react-dialog / tabs / dropdown-menu for modals/tabs/drawers or prune unused dependencies.
+Backend, Database, API & Persistence	BUILD	Currently absent from repository	No backend exists; must build API server, relational database schema, auth/RBAC, atomic XP/CP ledger, and mission verification workflows.
+My Services (/my-services) & My Projects (/my-projects)	INVESTIGATE	src/components/workspace/WorkspaceExperiences.tsx:72-80	Confirm with stakeholders whether freelance service listings and project showcases belong in MVP Explore / My Profile or should be deferred post-MVP.
+9. Technical Risks and Dependencies
+Severity	Risk / Issue	Location / Evidence	Why It Matters & Downstream Dependencies
+Critical	No backend or shared database	Entire repo (frontend-only SPA; AuthProvider.tsx uses localStorage)	Missions, evidence submissions, XP escrow/settlement, Contribution Points, leaderboards, and RBAC cannot function securely client-side. Blocks all functional features.
+Critical	No atomic XP Ledger or Escrow logic	Absent (Sidebar.tsx / WorkspaceOverview.tsx hardcode 2,450)	Mission creation, funding, approval payouts, expiry refunds, and non-reducible lifetimeXp depend on transactional ledger operations with idempotency keys.
+Critical	Client-side role split & insecure auth	AuthProvider.tsx, AuthGate.tsx, AuthForm.tsx	Current 3-role split (member/organization/admin) blocks single-account participation and allows trivial client-side admin impersonation. Must be replaced before building Stewardship, Control Room, or Mission Creator flows.
+High	No Mission / Evidence / Review state machine	Absent (listings.ts is read-only static array)	Cannot launch core product loop (create -> reserve XP -> submit evidence -> review -> settle/dispute/refund) or enforce policy against engagement farming.
+High	CSS cascade collision & mobile layout breakage	main.tsx, index.css, App.css, theme.css	Blanket * { font-size: max(.875rem, 1em)!important } and competing stylesheets cause duplicate button labels, broken leaderboard rows, and unreadable sizing on mobile.
+High	Missing landing mobile navigation & unclosable sidebar drawer	AppLayout.tsx, Topbar.tsx, Sidebar.tsx	Mobile visitors cannot navigate from / (landing-nav hidden), and mobile app users remain trapped in the drawer after clicking a link.
+Medium	Orphaned code & misleading static metrics	mockData.ts (1,177 lines), types/index.ts, utils.ts, DirectoryPage.tsx:37 (1,284 results)	Developers risk wiring features to outdated mockData schemas (ReputationLevel, Opportunity, Bounty) that contradict Spec v1.0.
+Medium	Monolithic WorkspaceExperiences.tsx	src/components/workspace/WorkspaceExperiences.tsx	Houses 15 unrelated screens in one file; hampers maintainability, code-splitting, and permission boundary enforcement.
+Low	Unused npm dependencies & assets	package.json (17 @radix-ui/* packages, framer-motion), src/assets/hero.png, react.svg, vite.svg	Inflates dependency footprint and causes confusion over whether accessible primitives (Dialogs/Tabs) are already wired.
+10. Recommended Target Architecture
+Existing vs. Proposed Infrastructure
+Existing (Retain & Refactor): React 19 + TypeScript + Vite SPA (src/), React Router v7 (App.tsx), layout primitives (AppLayout, PageScaffold, PageHeader, StatCard, EmptyState, ListingCard), and Radix UI primitives already in package.json (dialog, tabs, dropdown-menu, select, tooltip) for accessible modals, tabs, and drawers.
+Proposed (New Infrastructure Required):
+Backend + Relational Database: Express/Node.js API server (or Next.js/Express server.ts serving Vite in dev and dist/ in production) backed by a transactional relational SQL database (e.g., PostgreSQL via Cloud SQL + Drizzle/Prisma ORM). A relational ACID database is essential for atomic XP escrow reservations, immutable ledger appends, and uniqueness constraints against duplicate submissions.
+Object/Evidence Storage: Signed upload storage (or validated URL + attachment metadata) for mission evidence deliverables.
+Target Architecture by Domain
+Application Shell & Navigation (AppLayout, Sidebar, Topbar):
+One unified shell across Visitor, Spartan, Elder/Strategos, and Control Room users.
+Collapsible desktop sidebar + mobile left slide-over drawer (auto-closes on route change; also accessible on / mobile). No bottom mobile nav.
+Primary nav: Home (/ or /home), Missions (/missions), Houses (/houses), Explore (/explore), Academy (/academy), Events (/events).
+Personal nav (authenticated): My Activity (/activity), My Profile (/profile).
+Utility & gated access: Global Search (⌘K command modal), Notifications popover + page, Leaderboards (/leaderboards), XP/CP summary pill, Stewardship (/stewardship, permission-gated), Control Room (/control-room, permission-gated).
+Authentication & Permissions (auth_sessions, users, permissions, user_permissions):
+Server-issued HTTP-only session cookies (email/password + optional OAuth/wallet linking later).
+Single users record per person with membershipStatus (spartan), onboardingStage (newbie | active), primaryHouseId, secondaryHouseIds[], ascendancyRankId, lifetimeXp, spendableXp, contributionPoints.
+Scoped permissions: mission.create, mission.sponsor, mission.review, stewardship.access (with optional houseId scope for Strategoi), control_room.access, ledger.adjust, config.manage.
+User & Organization Profiles (organization_profiles, organization_members):
+Organizations/sponsors are first-class entity profiles linked to one or more Spartan accounts with sponsor / manager permissions—not separate login accounts.
+Houses (houses, house_memberships):
+Seeded with the 6 canonical Houses: Scribes, Heralds, Artisans, Echoes, Forge Masters, Seers.
+Single parameterized House page (/houses/:slug) with internal tabs (Overview, Missions, Members, Academy/Resources, Activity).
+Echoes outreach/distribution missions support cross-House eligibility flags so Spartans in any House can participate.
+Missions, Evidence & Review (missions, mission_submissions, mission_disputes):
+Full lifecycle (draft, funded, active, paused, expired, cancelled, completed) with policy guard rejecting prohibited engagement-farming templates.
+Submissions capture structured evidence (links, deliverables, notes, metadata hashes), enforce duplicate/rate-limit rules, and support pending_review -> approved | changes_requested | rejected -> disputed.
+XP Ledger, Contribution Points & Progression (xp_ledger, cp_ledger, level_configs, ascendancy_ranks, achievements, user_achievements):
+All XP mutations execute inside DB transactions updating cached lifetime_xp / spendable_xp projections alongside immutable xp_ledger rows (EARN, RESERVE, ALLOCATE, RECEIVE, REFUND, ADJUST).
+cp_ledger records non-spendable Contribution Points feeding Seasonal (seasons table) and All-Time leaderboards.
+level_configs stores the 30 configurable levels; ascendancy_ranks stores the 5 ranks (explicitly decoupled from automatic leadership grants).
+Events & Academy (events, event_registrations, academy_tracks, academy_lessons, lesson_progress):
+Separate Events module with RSVP/attendance verification (can trigger Mission/CP/XP rewards).
+Academy structured into tracks/modules/lessons linked to Houses and beginner Newbie onboarding.
+Stewardship & Control Room:
+Stewardship Workspace: House-scoped queue for Strategoi and Elders (submission reviews, disputes, House health, mentorship/stewardship tasks).
+Control Room: Platform-wide configuration (30 levels, activity rewards, achievements, seasons), user permission grants, global dispute escalation, and audited manual XP/CP adjustments.
+Styling & Responsive UI:
+Remove src/theme.css !important overrides and conflicting App.css/index.css duplication. Standardize on Tailwind CSS + clean CSS variables in a single token layer, using mobile-first responsive grids (min-w-0, no fixed-pixel multi-column row traps).
+11. Implementation and Migration Plan
+Phase 0: Cleanup & CSS/Shell Stabilization (Foundation)
+Objective: Eliminate dead code, resolve the 3-way CSS conflict, and fix baseline responsive shell bugs without changing product data yet.
+Systems: CSS tokens, AppLayout, Sidebar, Topbar, dead files.
+Affected Files: src/main.tsx, src/index.css, src/App.css, src/theme.css, src/layouts/AppLayout.tsx, src/components/Sidebar.tsx, src/components/Topbar.tsx, remove unused mockData.ts, FeedCard.tsx, SignalStrip.tsx, MessagesExperience.
+Dependencies: None.
+Order: 1) Remove dead files/imports -> 2) Consolidate CSS variables & drop !important overrides -> 3) Add desktop sidebar collapse, mobile auto-close on NavLink, and mobile landing nav.
+Acceptance Criteria: Zero horizontal overflow at 320px, 375px, 768px, 1280px; single consistent theme; no duplicate button labels on mobile; /messages removed.
+Testing: Visual/responsive check across mobile/tablet/desktop viewports; tsc -b + oxlint.
+Risks: Restyling regressions if App.css and theme.css selectors are removed piecemeal instead of systematically.
+Phase 1: Backend Infrastructure, Schema & Single-Account Auth/RBAC
+Objective: Establish real server-side persistence, relational schema, authentication, and permission-based authorization.
+Systems: Backend API (server.ts / API routes), PostgreSQL schema (via Cloud SQL), Auth sessions, Permissions, User & Organization profiles.
+Affected Files: New server/ + db/schema.ts; replace src/app/AuthProvider.tsx, src/app/authContext.ts, src/app/authRoutes.ts, src/components/AuthGate.tsx, src/components/auth/AuthForm.tsx, src/types/index.ts.
+Dependencies: Provisioning relational database (e.g., AI Studio Cloud SQL) and environment secrets.
+Order: 1) Provision DB & define core tables (users, sessions, permissions, houses, organization_profiles) -> 2) Implement auth endpoints (/api/auth/*) & RBAC middleware -> 3) Replace AuthProvider with API-backed auth + PermissionGate + Newbie onboarding flow (picking primary/secondary Houses).
+Acceptance Criteria: Single account signup/login lands Spartan in unified shell; Newbie is tracked as onboarding stage; no localStorage password hashes; organization profiles managed without separate account type; unauthorized API calls return 403.
+Testing: Integration tests for signup, login, session persistence, onboarding completion, and permission checks (401/403).
+Risks: Breaking existing demo workflows unless clean seed data/test accounts are provided for local dev.
+Phase 2: XP Ledger, Contribution Points & Progression Engine
+Objective: Build the transactional financial-grade XP ledger, CP scoring, 30 configurable levels, and 5 Ascendancy ranks before Missions can settle rewards.
+Systems: xp_ledger, cp_ledger, level_configs, ascendancy_ranks, achievements, seasons.
+Affected Files: New backend ledger service & /api/progression/* routes; refactor Sidebar.tsx XP card, WorkspaceOverview.tsx, Leaderboard, AchievementExperience, ReputationExperience.
+Dependencies: Phase 1 (users, permissions).
+Order: 1) Implement atomic ledger service (earn, reserve, allocate, receive, refund, adjust) with database transactions & idempotency -> 2) Implement CP & level calculation service -> 3) Seed 30 default levels, 5 Ascendancy ranks, and initial achievements -> 4) Wire UI views (My Profile, My Activity, Leaderboards).
+Acceptance Criteria: Spending/reserving XP reduces spendableXp and leaves lifetimeXp unchanged; every balance equals the sum of its ledger rows; Leaderboards rank strictly by CP (Seasonal & All-Time); crossing XP threshold never grants leadership permissions.
+Testing: Unit/concurrency tests on ledger transactions (prevent negative spendableXp, double-refund, or lifetimeXp reduction).
+Risks: Race conditions on concurrent XP reservations if row-level locking (SELECT ... FOR UPDATE) or atomic conditional updates are omitted.
+Phase 3: Houses & Navigation Shell Unification
+Objective: Replace generic Communities and scattered routes with the 6 Houses and the agreed 6-destination product shell.
+Systems: Houses directory, tabbed House experience, Echoes cross-House outreach capability, unified App Shell.
+Affected Files: src/app/navigation.ts, src/App.tsx, src/components/Sidebar.tsx, src/components/Topbar.tsx, replace CommunityDirectory with HousesPage / HouseDetailPage.
+Dependencies: Phase 1 (user House memberships), Phase 2 (House XP/CP aggregation).
+Order: 1) Seed the 6 Houses (Scribes, Heralds, Artisans, Echoes, Forge Masters, Seers) -> 2) Build /houses index + /houses/:slug tabbed view -> 3) Remap top-level navigation to Home, Missions, Houses, Explore, Academy, Events + My Activity, My Profile + global ⌘K search & notifications.
+Acceptance Criteria: All 6 primary destinations and Personal pages accessible with identical hierarchy across desktop/tablet/mobile; members can hold primary + secondary Houses and participate in Echoes outreach regardless of primary House.
+Testing: Route & navigation guard tests; mobile/desktop nav parity check.
+Risks: Broken bookmarks from legacy routes (/communities, /learning-hub, /bounties) — mitigate with <Navigate> redirects to new routes.
+Phase 4: Missions, Evidence Capture & Verification Workflow
+Objective: Implement the end-to-end Mission lifecycle, XP reservation/settlement, submission & evidence verification, resubmission, disputes, and expiry/refunds.
+Systems: Missions CRUD, XP escrow integration, Submission & Evidence portal, Review queue, Dispute handling, Anti-fraud/policy checks.
+Affected Files: New backend mission/submission/dispute services & routes; replace DirectoryPage.tsx (Missions mode), Create Opportunity (ProfileForm.tsx), Manage Applicants (ApplicantExperience), and add Mission Detail + Submission + Review components.
+Dependencies: Phase 1 (permissions), Phase 2 (atomic XP reservation/settlement/refund), Phase 3 (House association & Echoes eligibility).
+Order: 1) Mission creation & XP funding/reservation -> 2) Mission discovery & eligibility filtering -> 3) Evidence submission & duplicate/policy validation -> 4) Reviewer approval/rejection/resubmission -> 5) Expiry cron/job & refund settlement -> 6) Dispute escalation.
+Acceptance Criteria: Funded mission locks spendableXp; approved submission atomically settles reward + CP; rejected submission allows resubmission; cancelled/expired mission refunds unspent XP; duplicate submissions and engagement-farming tasks are blocked.
+Testing: End-to-end lifecycle tests covering happy path, rejection + resubmission, dispute, cancellation refund, and concurrent submission/approval race tests.
+Risks: Complexity of partial vs. full multi-winner mission budgets; clarify budget splitting rules before coding.
+Phase 5: Academy, Events & Explore Consolidation
+Objective: Evolve static Learning Hub, Events, and Explore sub-directories into persistent, mission-linked experiences.
+Systems: Academy tracks/lessons, Events & attendance, Explore (consolidated Grants/Hackathons/Opportunities/Organizations/Resources).
+Affected Files: src/pages/public/DirectoryPage.tsx, src/components/public/PublicPageExperience.tsx, new AcademyPage.tsx and EventsPage.tsx.
+Dependencies: Phase 1–4 (missions/XP/CP triggers for course/event completion).
+Order: 1) Migrate Events off Hackathon filter into dedicated events table & RSVP/attendance flow -> 2) Build Academy tracks & lesson completion persistence -> 3) Consolidate remaining public discovery tabs cleanly under Explore.
+Acceptance Criteria: Events and Academy display real persistent records, track completion/registration, and award configured XP/CP where applicable.
+Testing: Registration capacity limits, duplicate RSVP prevention, lesson progress persistence.
+Risks: Scope creep in Academy (keep to structured lessons/tracks + mission links, not full LMS video streaming).
+Phase 6: Stewardship Workspace & Control Room
+Objective: Deliver permission-gated leadership and platform administration tools inside the shared shell.
+Systems: Stewardship (Elders & House-scoped Strategoi), Control Room (platform config, permission management, ledger adjustments, disputes, moderation).
+Affected Files: Replace src/pages/admin/AdminPage.tsx, src/pages/organization/OrganizationPage.tsx, and split WorkspaceExperiences.tsx into modular src/pages/stewardship/* and src/pages/control-room/*.
+Dependencies: Phase 1 (RBAC & House scoping), Phase 2 (configurable levels/rewards & ledger adjustments), Phase 4 (disputes & moderation).
+Order: 1) Build House-scoped Stewardship view (submission reviews, disputes, House metrics) -> 2) Build Control Room config editors (30 levels, rewards, seasons, achievements) -> 3) Build audited ledger adjustment & permission assignment tools.
+Acceptance Criteria: Strategoi can only act on their assigned House(s); Elders access Stewardship without unrestricted platform admin powers; all Control Room ledger/permission edits write audit logs.
+Testing: Cross-House authorization boundary tests (Strategos A blocked from House B); audit log verification.
+Risks: Privilege escalation if House-scope checks are enforced only in UI queries instead of backend authorization middleware.
+Phase 7: End-to-End QA, Mobile Viewport Verification & Cutover
+Objective: Full regression, responsive verification across small/large mobile, tablet, and desktop, and production readiness checks.
+Testing: Automated E2E tests (auth, mission lifecycle, XP ledger invariants, RBAC boundaries) + manual/Playwright viewport verification (320px, 390px, 768px, 1280px).
+12. Final Recommendations
+Address first:
+Provision a real backend + transactional SQL database (Phase 1) and remove the theme.css !important CSS conflict + mobile navigation bugs (Phase 0).
+Replace the 3-role AuthProvider model with the single-account Spartan + permission-based model before building any new pages.
+Preserve:
+Vite + React 19 + TypeScript build setup, AppLayout + PageScaffold + PageHeader + StatCard + EmptyState + ListingCard structure, landing visuals (NexusHero.png, NexusHeroBg.jpg), and installed @radix-ui/* primitives for accessible dialogs/tabs.
+Do not build yet (explicitly out of MVP):
+In-app messaging (remove MessagesExperience), XP cash redemption, XP trading/transfers between users, token issuance/smart-contract payouts, automatic XP-based leadership promotions, artificial X engagement-farming tasks, and member-created squads.
+Clarifications needed before implementation:
+Services & Projects (My Services, My Projects, /services, /projects): Should these be consolidated into Explore / My Profile in v1.0 or deferred post-MVP?
+Mission Budget & Multi-Winner Model: Can a single Mission fund multiple fixed-reward slots (e.g., 10 winners × 100 XP) or only 1-to-1 / manual partial payouts?
+Organization / Sponsor Verification: Who is permitted to create an Organization/Sponsor profile—any Spartan, or Control Room-approved sponsors only?
+30 Levels & 5 Ascendancy Ranks: Exact names, XP thresholds, and initial activity reward values for seeding level_configs and ascendancy_ranks.
+Must be tested before deployment:
+Ledger invariants (lifetimeXp never decreases on spend/reserve; spendableXp never goes negative; refunds match unspent escrow).
+Authorization boundaries (Visitors vs. Spartans vs. House-scoped Strategoi vs. Elders vs. Control Room admins).
+Mobile responsiveness at 320px–390px (drawer close on nav, landing mobile nav, leaderboard grid, forms, zero horizontal scroll).
+Concise Handover Summary
+What can we retain?
+The Vite + React 19 + TypeScript setup, router/page scaffolding (AppLayout, PageScaffold, PageHeader, StatCard, EmptyState, ListingCard), landing visuals (NexusHero.png, NexusHeroBg.jpg), and @radix-ui/* UI primitives.
+What needs adapting?
+Navigation & Sidebar/Topbar (to the 6 primary destinations + Personal area + desktop collapse + mobile auto-close), DirectoryPage (into Missions/Explore/Events), LearningDirectory (into Academy), Leaderboard (to Contribution Points + mobile grid fix), and member profile/activity screens (to Lifetime/Spendable XP, CP, and Houses).
+What must be built?
+A backend API and relational SQL database, real session authentication with permission-based RBAC (Spartan, Newbie stage, Elders, House-scoped Strategoi, Control Room), the 6 Houses experience, the full Mission + Evidence + Review + Dispute + Refund lifecycle, the transactional XP Ledger, Contribution Points & 30-level/5-Ascendancy progression, and Stewardship/Control Room workspaces.
+What should be replaced?
+AuthProvider.tsx/AuthGate.tsx (client-side 3-role localStorage auth), OrganizationPage & AdminPage stubs, CommunityDirectory (generic Web3 groups), and the conflicting 3-file CSS stack (index.css/App.css/theme.css !important overrides). (Also remove out-of-scope MessagesExperience and unused mockData.ts.)
+What are the most important dependencies?
+Backend + Auth/Permissions -> Atomic XP Ledger & CP Engine -> Houses -> Missions/Evidence/Settlement -> Stewardship & Control Room. Mission settlement cannot be built safely until auth/permissions and the transactional XP ledger exist.
+What is the safest implementation order?
+Phase 0 (CSS & shell cleanup) -> Phase 1 (Backend, DB, single-account Auth/RBAC) -> Phase 2 (XP Ledger, CP, Levels, Ascendancy) -> Phase 3 (6 Houses & unified shell navigation) -> Phase 4 (Missions, Evidence, Review, Disputes, Refunds) -> Phase 5 (Academy, Events, Explore) -> Phase 6 (Stewardship & Control Room) -> Phase 7 (E2E & responsive QA).
+What decisions still require human approval?
+Confirmation on database/backend hosting choice (e.g., AI Studio Cloud SQL + Express), whether My Services/My Projects stay in v1.0, multi-winner mission budget rules, sponsor profile approval rules, and the exact configuration values for the 30 levels, 5 Ascendancy ranks, and initial activity rewards.
+(Ready and awaiting your explicit approval before making any code changes.)

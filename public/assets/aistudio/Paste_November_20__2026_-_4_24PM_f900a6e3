@@ -1,0 +1,229 @@
+Gemini 4 Hydrogen
+Ran for 2m 34s
+
+Action history
+THE ARENA — AUDIT RECONCILIATION & FINAL IMPLEMENTATION BLUEPRINT
+Status: Read-only reconciliation complete (NO CODE CHANGES MADE)
+Authoritative Product Baseline: The Arena — Master Product & Implementation Specification v1.0 (20 November 2026)
+Inspected Repository Baseline: Vite 8 + React 19 + TypeScript SPA (/src/**, /package.json, /vite.config.ts)
+1. Corrections to the Initial Audit
+The initial audit treated several established Master Specification v1.0 baselines as unresolved, misclassified confirmed Explore categories, overstated an MVP exclusion on internal XP transfers, treated a proposed SQL stack as fixed, and ordered the migration phases out of dependency order.
+Area	Initial Audit Claim	Authoritative Spec v1.0 Correction	Classification
+30 Numerical Levels & Thresholds	Listed "30 Levels & 5 Ascendancy Ranks: Exact names, XP thresholds" under unresolved clarifications & human-approval items.	Spec §5.7 & §16 define 30 numerical levels (1–30) (numbers, not named ranks) with exact cumulative Lifetime XP thresholds (0 to 23,200 XP), configurable later.	BASELINE
+5 Ascendancy Ranks & Spartan Identity	Treated rank names and definitions as unresolved.	Spec §3.2–3.3 define Spartan as default membership identity (Newbie = onboarding stage, not rank/role) and the five Ascendancy ranks: Vanguard → Gladiator → Strategos → Elder → Champion, decoupled from XP-only auto-promotion (ACC-003).	CONFIRMED / AGREED
+Initial System XP Activity Values	Treated initial activity reward values as unresolved.	Spec §5.5 & §16 define 12 configurable activity XP values (5 to 100 XP / 20 once for orientation) plus 6 anti-farming/anti-duplication exclusions.	BASELINE
+Mission Reward Bands	Suggested generic budget questions without citing approved ranges.	Spec §4.11 & §5.6 establish 4 configurable per-contributor guidance bands: Micro (25–75 XP), Standard (100–250 XP), Substantial (300–750 XP), Major (800–1,500 XP); rewards above Major require additional approval.	BASELINE
+CP Scoring, Seasonal Caps, Leaderboards & 19 Achievements	Described CP/leaderboards/achievements abstractly and omitted exact baselines.	Spec §5.9–5.11 establish 14 CP values (1–50 CP), 3 seasonal caps on repetitive low-intensity tasks, 5 Leaderboard categories across 90-day Current Season + All-time historical archive, and 19 initial configurable achievements.	BASELINE
+Projects & Services Scope	Flagged My Services (/my-services) and My Projects (/my-projects) as INVESTIGATE ("unclear whether in MVP").	Spec §2.2 (NAV-004) explicitly places Opportunities, People, Projects, Services, Resources, Discussions inside Explore; §2.3 (NAV-008) puts Projects in My Profile → Portfolio; §2.5 puts Add a project / Add a service in Quick Create; §5.3 covers Spend XP on a service mission. Standalone top-level /my-projects & /my-services sidebar routes consolidate into Explore/Profile/Missions.	CONFIRMED
+Internal XP Transfers vs. External Trading	Stated "Do not build yet: XP trading/transfers between users".	Spec §10.3 excludes publicly tradable XP, cash redemption, guaranteed monetary value, or tokenisation. Spec §5.1, §5.3, §5.4, §5.12 explicitly require internal XP transfers through mission funding, commissioned work, and service missions.	CONFIRMED
+Organisation Creation	Asked "Who is permitted to create an Organization/Sponsor profile—any Spartan, or Control Room-approved sponsors only?"	Spec §3.1 (ACC-002) confirms any individual may create or associate with an organisation profile (representing projects, brands, companies, teams, initiatives) without inheriting personal XP/rank. Spec §16 leaves only the final organisation verification process open as an operational detail.	CONFIRMED (creation) / UNKNOWN (verification flow)
+Backend/DB Stack Neutrality	Initial Audit §10 & Phase 1 treated Express + Cloud SQL PostgreSQL + Drizzle/Prisma as already decided.	Spec §6 states the logical data model is not a mandate for a specific database technology, and Spec §16 lists Final database and API architecture and Production authentication and storage provider as open technical decisions requiring human approval.	PROPOSED / UNKNOWN
+Implementation Dependency Order	Placed Phase 2 (XP Ledger) before Phase 3 (Navigation Shell Unification & Houses).	Shared application architecture (design system, unified shell/navigation, identity/auth, backend persistence, RBAC, House/org profiles) must precede domain engines (XP/CP accounting, Missions, Evidence/Review, Academy/Events, Stewardship/Control Room).	REVISED
+2. Reconciled Product Requirements
+2.1 Truth-Classified Core Product Baseline
+Positioning & Journey (CONFIRMED — Spec §1.1–1.3): A community for becoming — Learn. Discover. Build. Contribute. Grow. Prioritises proof of work and meaningful contribution over engagement farming.
+Account & Membership (CONFIRMED — Spec §3.1–3.4):
+One unified Arena account per individual (ACC-001); never force Builder vs. Organization account splits at sign-up.
+Visitor = unauthenticated public user; Spartan = default authenticated identity; Newbie = onboarding stage inside Home/product guidance, never a separate role/rank.
+Organisations (ACC-002) are first-class entity profiles linked to Spartan accounts; they do not inherit owner XP, achievements, or Ascendancy rank.
+Scoped RBAC (ACC-003, §3.4): Mission creator, Mission reviewer, House manager, Mentor, Event manager, Content manager, Moderator, Finance administrator, Platform administrator enforced authoritatively on the backend using least privilege.
+Navigation & Shared Shell (CONFIRMED — Spec §2.1–2.6):
+Single unified shell across desktop, tablet, and mobile with collapsible left sidebar (overlay/drawer on mobile), identical navigation hierarchy across devices, and no separate mobile bottom-navigation bar.
+6 Primary Destinations: Home (NAV-001), Missions (NAV-002: Discover, My Missions, Submissions, History), Houses (NAV-003: Overview, Activity, Missions, Academy, Members, About), Explore (NAV-004: Opportunities, People, Projects, Services, Resources, Discussions), Academy (NAV-005), Events (NAV-006).
+Personal Area: My Activity (NAV-007: Contributions, My Missions, Submissions, Applications, Saved, XP History, Progress & Recognition) & My Profile (NAV-008: Identity, Arena membership, Portfolio, Recognition, plus clearly separated private Settings).
+Conditional Permission-Gated Workspaces (same app): New Spartan onboarding, Stewardship workspace (Elders + House-scoped Strategos tools), Control Room (admin permissions).
+Global Utilities: Global Search, Notifications, permission-aware Quick Create (create mission, submit PoW, publish resource, propose event, add project/service, create opportunity), account & privacy controls.
+Houses (CONFIRMED — Spec §3.5–3.7):
+6 Canonical Houses: Scribes, Heralds, Artisans, Echoes, Forge Masters, Seers.
+Every Spartan selects 1 Primary House + 1 Secondary House (editable over time; used for recommendations/discovery, never blocks cross-House missions, never grants permissions).
+Echoes cross-House capability: Opt-in outreach participation for eligible Echoes missions by members of any House, with strict compliance against artificial engagement/metric manipulation.
+Missions & Evidence (CONFIRMED — Spec §4):
+10 Initial Categories: Social and Outreach, Creative and Design, Writing and Research, Technical and Development, Learning and Education, Events and Participation, Community and Operations, Offline and IRL, Collaboration, Custom.
+4 Participation Formats: Open participation, Application-based, Team-based, Automatic or guided participation.
+Mission Lifecycle (9 states): Draft, Pending review, Published, Active, Paused, Completed, Cancelled, Expired, Archived (plus separate participation availability flag).
+Submission Lifecycle (6 states): Submitted, Under review, Revision requested, Approved, Rejected, Disputed. Self-review prohibited. Evidence types: text, images, files, links, video/audio, structured responses, attendance verification, reviewer confirmation.
+Funding & Settlement: Funded missions lock creator Spendable XP on publish (Reserved), allocate to approved submissions (Transferred/Received), refund unused funds on cancellation/expiry/partial settlement (Refunded), and log all disputes with original evidence/comments.
+2.2 Established Configurable Baselines (BASELINE)
+Dual XP Accounting & Ledger (CONFIRMED rules, Spec §5.2–5.4 & §5.13):
+Lifetime XP: Monotonically measures cumulative earned XP; drives numerical level; never reduced by spending.
+Spendable XP: Available internal credit for funding missions, commissioning work, and service missions; Reserved XP tracked separately; negative balances prohibited.
+XP Sources & Ledger: Separate System-awarded XP vs. Member-funded XP. Transaction types: Earned, Reserved, Transferred, Received, Refunded, Adjustment.
+30 Numerical Levels — Cumulative Lifetime XP Thresholds (Spec §5.7, BASELINE):
+L1: 0 · L2: 100 · L3: 250 · L4: 450 · L5: 700 · L6: 1,000 · L7: 1,350 · L8: 1,750 · L9: 2,200 · L10: 2,700
+L11: 3,250 · L12: 3,850 · L13: 4,500 · L14: 5,200 · L15: 5,950 · L16: 6,750 · L17: 7,600 · L18: 8,500 · L19: 9,450 · L20: 10,450
+L21: 11,500 · L22: 12,600 · L23: 13,750 · L24: 14,950 · L25: 16,200 · L26: 17,500 · L27: 18,850 · L28: 20,250 · L29: 21,700 · L30: 23,200
+Initial System-Awarded Activity XP & Exclusions (Spec §5.5, BASELINE):
+Orientation & rules check (20, once), Academy lesson w/ knowledge check (5), Academy module (20), Learning path (75), Practical learning assessment (25–100), Verified community-support task (10–25), Attend eligible event (5), Event support role (25–50), Host/organise event (50–100), Verified mentorship session (20), Assigned House responsibility (25–75), Assigned leadership responsibility (25–100).
+No XP awarded for: profile completion, House selection, login streaks, raw likes/follows/reposts/views/comments, duplicate/unverified work, or duplicate automatic system bonus atop member-funded missions.
+Mission Per-Contributor Reward Bands (Spec §4.11 & §5.6, BASELINE):
+Micro: 25–75 XP, Standard: 100–250 XP, Substantial: 300–750 XP, Major: 800–1,500 XP (>1,500 XP requires additional approval).
+Contribution Points (CP), Caps & Leaderboards (Spec §5.9–5.10, BASELINE):
+CP is non-spendable, non-transferable, and powers rankings (Spendable XP must never rank leaderboards).
+Values: Approved mission (Micro: 5, Standard: 15, Substantial: 30, Major: 50), Academy lesson w/ check (1), Academy module (5), Learning path (15), Practical assessment (5–15), Community support (5), Event attendance (1), Event support (5), Event hosting (10), Mentorship session (10), Approved House responsibility (10).
+Seasonal Caps (90-day season): Event attendance <=10 CP/season; Non-mission community support <=50 CP/season; Mentorship <=60 CP per mentor/mentee pair/season.
+5 Leaderboard Categories: Overall Contributors, House Rankings (6 views, 1 per House), Mission Contributors, Learning & Growth, Community & Stewardship across Current season (90 days) and All-time historical archive.
+19 Initial Configurable Achievements (Spec §5.11, BASELINE):
+Arena Ready, First Contribution, Mission Maker, Reliable Contributor, Mission Veteran, Academy Starter, Path Finisher, Practical Learner, Cross-House Collaborator, House Pillar, Community Builder, Event Steward, Mentor's Mark, Scribe's Mark, Herald's Voice, Artisan's Craft, Echoes' Reach, Forge Mark, Seer's Insight. (Recognition markers only; no silent automatic XP bonus).
+2.3 Phased & Explicitly Excluded Scope
+FUTURE (Phased Post-MVP — Spec §10.2): Member-created teams/squads (§3.8), advanced team missions & contribution splits (§4.15), AI-assisted evidence verification, advanced analytics, external/tangible reward integrations, advanced organisation team workspaces, council governance.
+Explicitly EXCLUDED from Current Release (Spec §1.6 & §10.3): In-app messaging (MessagesExperience), publicly tradable XP, cash redemption/guaranteed monetary value, token issuance/tokenisation/on-chain XP, engagement-farming leaderboards, automatic XP-only leadership appointments.
+3. Confirmed Technical Findings (VERIFIED in Repository)
+3.1 Stack, Build & Verification Status
+Runtime/Tooling (package.json): React ^19.2.8, TypeScript ~6.0.2, Vite ^8.3.0, react-router-dom ^7.18.4, lucide-react ^1.52.0, Tailwind CSS ^3.4.19, oxlint ^1.81.0.
+Build & Lint Status: npm run build (tsc -b && vite build) and npm run lint (oxlint) pass cleanly (0 errors/warnings across 50 files). No automated test framework (vitest, jest, playwright) is installed.
+Verified Gaps: Zero backend server, zero database, zero fetch/API client, zero WebSocket/realtime channel, zero file upload/object storage, zero blockchain/wallet SDK.
+3.2 Authentication, Routing & State Defects
+Insecure 3-Role Client Auth (src/app/authContext.ts, src/app/AuthProvider.tsx, src/components/auth/AuthForm.tsx):
+Hardcodes UserRole = 'member' | 'organization' | 'admin', forces Builder vs. Organization choice at /register (AuthForm.tsx:80-83), and exposes 1-click demo login including Administrator (AuthForm.tsx:95).
+Stores password salts/SHA-256 hashes and session state in localStorage (arena.accounts.v1, arena.session.v1).
+Persistence Bug (AuthProvider.tsx:109-112): completeOnboarding(name, focus) mutates arena.session.v1 only, not arena.accounts.v1, discarding changes upon sign-out/sign-in.
+Fragmented Route Partitioning (src/App.tsx:25-40, src/app/navigation.ts:1-13, src/components/AuthGate.tsx:9):
+14 PUBLIC_PAGES, 12 MEMBER_PAGES, 4 ORG_PAGES, 4 ADMIN_PAGES, 4 AUTH_PATHS. Organizations are locked out of MEMBER_PAGES (/profile, /achievements, /notifications, /settings), and members are locked out of ORG_PAGES.
+Contains out-of-scope /messages (WorkspaceExperiences.tsx:86-91) and treats Events in DirectoryPage.tsx:24 as an alias for item.kind === 'Hackathon'.
+PageHeader.tsx:12,21-22 shows Create opportunity on /opportunities to unauthenticated visitors and members, routing them into /login or /forbidden.
+Non-Persistent UI & Hardcoded Data Contradictions:
+Sidebar.tsx:38-49 hardcodes Lvl 08 / Builder / 2,450 / 3,000 XP / 550 to level up and nav-count 3; WorkspaceOverview.tsx receives flash={() => undefined} from WorkspaceExperiences.tsx:57.
+ProfileForm.tsx:4-20 reuses one 5-field toast-only form (defaultValue="Jordan Davis") for Edit Profile, Settings, and Create Opportunity.
+DirectoryPage.tsx:26,37 renders identical 4 listings (listings.ts — note literal kind: 'Opportunity' at line 15 vs. typo check or listings length check returning fake "1,284 results").
+PublicPageExperience.tsx:32-38,90-92 (Leaderboard) ranks by hardcoded XP instead of CP, and contradicts itself (podium: Alex 01 4,120 XP, Maya 02 3,840 XP vs. members array: Maya 01 3,840, Jordan 02 2,450).
+Topbar.tsx:31-32 renders decorative ⌘ K with no keyboard handler, search bound only to DirectoryPage.tsx, and a bell button that only fires flash('You’re all caught up!').
+3.3 Dead Code & Unused Dependencies (Verified via Workspace grep)
+src/data/mockData.ts (1,177 lines): never imported anywhere.
+src/types/index.ts (280 lines): imported only by unused src/data/mockData.ts.
+src/lib/utils.ts (138 lines; defines obsolete 6-level Explorer -> Pioneer helper): never imported anywhere.
+src/components/FeedCard.tsx, src/components/landing/SignalStrip.tsx, and feedItems (src/data/pageContent.ts): never imported anywhere.
+src/assets/hero.png, react.svg, vite.svg: unused (HeroSection.tsx & DirectoryShowcase.tsx use only NexusHero.png and NexusHeroBg.jpg).
+All 17 @radix-ui/react-* packages, framer-motion, class-variance-authority, clsx, and tailwind-merge in package.json: 0 runtime imports in active source files (clsx/tailwind-merge only in unused utils.ts).
+3.4 CSS Cascade & Static Responsive Findings
+Limitation: Findings below are verified from static CSS/JSX inspection (src/main.tsx, index.css, App.css, theme.css); live browser viewport testing could not run in read-only audit mode.
+3-Layer CSS Conflict (src/main.tsx): Loads index.css (Tailwind + dark indigo) → App.css (dark charcoal/pink) → theme.css (light navy/red, then lines 236–944 blue/white !important overrides).
+Blanket Rule Damage (theme.css:272-284): * { font-size: max(.875rem, 1em)!important; background-color: transparent!important; background-image: none!important; } flattens typography hierarchy, prevents button backgrounds/labels from styling properly, and breaks .profile-identity > .button on mobile (<=620px, theme.css:6 sets font-size: 0 + :after { content: "Edit" }, so both "Edit profile" and "Edit" appear simultaneously).
+Shell & Component Breakage:
+Sidebar.tsx has no desktop collapse toggle (App.css:10-11 fixes width), workspace-switch has no handler, and mobile NavLink does not call onClose(), trapping users behind .mobile-scrim.
+On / mobile (<=700px), .landing-nav is hidden (theme.css:638) and AppLayout.tsx:16 omits Sidebar, leaving zero navigation links on mobile landing.
+.rank-row (PublicPageExperience.tsx:91) places 5 visible children into a 4-column <=620px grid, wrapping .rank-change; .podium-person fixed heights clip at 16px+ text.
+Confirmed compliant: no separate mobile bottom-navigation structure exists (AppLayout.tsx, Sidebar.tsx).
+4. Proposed Target Architecture
+To keep product requirements separate from unapproved infrastructure choices (Spec §6 & §16), system infrastructure is categorized below by verification status.
+4.1 Infrastructure Status Matrix
+Category	Components
+Verified Existing Infrastructure (VERIFIED)	Client-side Vite 8 + React 19 + TypeScript SPA (package.json, vite.config.ts), react-router-dom v7 client routing (src/App.tsx), AppLayout / PageScaffold / PageHeader / StatCard / EmptyState / ListingCard UI primitives, lucide-react icons, installed-but-unused @radix-ui/* & tailwindcss tooling, NexusHero.png & NexusHeroBg.jpg assets.
+Confirmed Absent Infrastructure (VERIFIED Absent)	Any HTTP/RPC backend server, session/JWT verification, server-side RBAC enforcement, relational or document database, transactional XP/CP ledger & escrow engine, file/object storage & signed upload endpoints, background jobs (mission expiry, 90-day season snapshots), email/notification delivery transport, automated test suite.
+Proposed New Architecture (PROPOSED)	1) Unified Web Frontend: Single consolidated design-token/CSS layer (AppShell, collapsible Sidebar, global Topbar search/notifications/Quick Create, PermissionGate, feature modules replacing monolithic WorkspaceExperiences.tsx).
+2) Authoritative Backend Service: REST/JSON (or typed RPC) API layer enforcing authentication, scoped PermissionGrant checks, anti-farming mission rules, conflict-of-interest checks, and idempotent transactional XP/CP settlement.
+3) Core Persistence Layer: Stores Spec §6.1 logical entities (Account, MemberProfile, Organisation, OrganisationMembership, MembershipStatus, AscendancyAssignment, House, MemberHouseAffiliation, PermissionGrant, Mission, MissionParticipation, MissionSubmission, EvidenceItem, Review, MissionBudget, XPTransaction, XPBalance, ContributionRecord, ContributionPointEvent, AchievementDefinition, MemberAchievement, LeaderboardSnapshot, AcademyContent, LearningCompletion, Event, EventParticipation, Notification, AuditLog).
+4) Evidence & Media Storage + Scheduled Workers: Validated upload handling (type/size/private ACLs) and scheduled mission expiry / seasonal leaderboard rollup jobs.
+Infrastructure Requiring External Confirmation (UNKNOWN / BLOCKED)	Provisioned database project/region, email/SMTP or OAuth identity credentials (for password reset, email verification, connected accounts), object storage bucket & CORS/ACL policies, preview/production environment secrets.
+Decisions Requiring Human Approval (DECISION REQUIRED)	1) Primary backend & database provider (Option A vs. B vs. C below).
+2) Production auth mechanism (managed auth vs. custom session auth + connected accounts).
+3) File/evidence storage provider & retention policy.
+4) Operational governance rules listed in Spec §16 (see Section 8).
+4.2 Architectural Options, Trade-Offs & Recommendation
+The Master Specification (§5.13, §6.3, §9.3, §11.4) mandates strict financial-like invariants: no negative Spendable XP, atomic mission escrow/refunds, duplicate payout/scoring prevention under concurrency, and strict referential integrity across 28 entities.
+Architectural Dimension	Option A (Recommended)	Option B	Option C
+Backend + Database	Node/Express (server.ts integrated with Vite) + Hosted PostgreSQL (e.g., AI Studio Cloud SQL) using a typed SQL schema/ORM (e.g., Drizzle or Prisma).	Managed BaaS / NoSQL (e.g., Firebase Auth + Firestore) with Cloud Functions / server transactions.	Separated Serverless API + Managed Postgres (e.g., Supabase / Neon + external API).
+Trade-offs	Pros: Native ACID transactions (SELECT ... FOR UPDATE), relational foreign keys across 28 entities, SQL SUM reconciliation for XP/CP ledgers, seasonal leaderboard window queries, runs cleanly on port 3000 via server.ts in AI Studio.
+Cons: Requires managing DB schema migrations and provisioning Postgres.	Pros: Fast auth bootstrap and realtime listeners.
+Cons: Multi-document escrow/refund/CP-cap invariants, relational joins across Houses/Permissions/Leaderboards, and strict private-evidence ACLs are harder to model and audit cleanly in NoSQL than in relational SQL; adds vendor lock-in.	Pros: Built-in Auth/Storage/Postgres bundle.
+Cons: Introduces external platform credentials and split deployment surface outside the single AI Studio runtime.
+Auth & Sessions	HTTP-only secure session cookies backed by server sessions table (or verified Firebase/OIDC tokens exchanged for server session), email verification + password reset via email provider.	Managed client SDK token passed via Authorization: Bearer to backend API.	Magic-link / OAuth-only without local passwords.
+Evidence Storage	External Object Storage (S3/GCS signed upload URLs) with server-side MIME/size/ownership validation & private-by-default download proxying (MVP fallback: validated URL/metadata + capped private upload store).	Database bytea/blobs (simple initially, degrades DB size/backups).	External links only (simplest, weakest proof preservation on disputes).
+Recommendation (PROPOSED, awaiting human approval): Adopt Option A (server.ts Express API + Managed PostgreSQL + HTTP-only server sessions + Signed Object Storage) because it aligns directly with AI Studio's single-server runtime (port 3000), provides strict ACID guarantees for XP escrow and settlement without client trust, cleanly supports all 28 relational entities in Spec §6.1, and keeps vitest/API integration testing deterministic.
+5. Verified Dependencies (Strict Prerequisite Chain)
+Implementation must respect hard technical dependencies rather than building disconnected domain widgets on unstable auth or fragmented UI shells:
+Tier 0 — CSS & Codebase Hygiene (Prerequisites for all UI work):
+Remove the 3-layer CSS !important collision (index.css / App.css / theme.css) and dead prototypes (mockData.ts, FeedCard.tsx, SignalStrip.tsx, MessagesExperience). Without this, typography, modals, forms, and mobile layouts remain broken everywhere.
+Tier 1 — Persistence, Account Identity, Auth & Scoped Permissions (Prerequisites for all stateful systems):
+Backend Persistence + Unified Account & MemberProfile (Visitor / Spartan / Newbie stage) + Server-Side PermissionGrant Enforcement must exist before any protected mutation (House selection, XP reserve, Mission creation, Evidence review, Stewardship, Control Room).
+Tier 2 — Shared Application Shell, Navigation, Houses & Organisation Profiles (Prerequisites for all user-facing experiences):
+Unified AppLayout + collapsible desktop/mobile Sidebar + Topbar (Search, Notifications, Quick Create) + canonical 6 primary destinations (Home, Missions, Houses, Explore, Academy, Events) + Personal area (My Activity, My Profile) + 6 Canonical Houses (Primary/Secondary affiliation) + Organisation Profiles (ACC-002). Putting shared navigation and House/Org identity here ensures all subsequent features plug directly into real routes and House contexts rather than throwaway stubs.
+Tier 3 — Authoritative XP & CP Accounting + Progression Engine (Prerequisites for Missions, Academy, Events, Leaderboards):
+Dual-balance XP Ledger (Lifetime vs. Spendable + Reserved), Contribution Point Ledger (w/ seasonal caps), 30 configurable numerical levels, 5 Ascendancy ranks (explicit assignment only), and 19 configurable achievement rules. Missions cannot fund, reserve, payout, or refund safely until this transactional accounting core exists.
+Tier 4 — Core Operational Loop: Missions, Funding, Evidence, Review & Settlement:
+Depends on Tier 1 (permissions), Tier 2 (Houses/Orgs/Navigation), and Tier 3 (XP escrow/settlement + CP/achievement triggers). Includes creation wizard, eligibility/anti-farming checks, submission/evidence capture, reviewer conflict-of-interest guard, revision/dispute flows, and expiry/cancellation refunds.
+Tier 5 — Secondary Ecosystem Modules: Academy, Events & Explore:
+Depend on Tier 2 (Shell/Houses) and Tier 3 (system XP/CP rules for lessons, paths, assessments, attendance, hosting) + optional Tier 4 mission linkage.
+Tier 6 — Governance & Administration: Stewardship & Control Room:
+Depend on Tier 1 (scoped RBAC + AuditLog), Tier 2 (Houses), Tier 3 (XP/CP adjustments, level/achievement/season config, Ascendancy appointments), and Tier 4 (moderation, high-value approvals, dispute escalation).
+6. Revised Implementation Phases
+Key Change from Initial Audit: Shared CSS/shell stabilization, persistence/auth/permissions, and unified navigation/House/Organisation identity are established before XP accounting and domain features, eliminating throwaway refactoring.
+Phase 0: Repository Cleanup & Unified Design System Foundation
+Scope: Remove dead code (src/data/mockData.ts, src/components/FeedCard.tsx, src/components/landing/SignalStrip.tsx, unused feedItems, unused assets hero.png / react.svg / vite.svg) and explicitly excluded MessagesExperience (/messages). Prune unused packages or confirm keeping needed @radix-ui/* primitives (e.g., dialog, tabs, dropdown-menu, select, tooltip). Consolidate index.css, App.css, and theme.css into one clean CSS-token + Tailwind stylesheet without blanket * { !important } rules.
+Dependencies: None.
+Deliverables: Clean token stylesheet, zero duplicate button text on mobile (<=620px), tsc -b + oxlint green.
+Phase 1: Backend Persistence, Unified Account Identity, Authentication & Permission Architecture
+Scope: Stand up chosen backend API + database schema; implement Account, MemberProfile, MembershipStatus (Visitor/Spartan + Newbie onboarding state), PermissionGrant (scoped RBAC middleware + frontend PermissionGate), Organisation & OrganisationMembership (ACC-002), and AuditLog. Replace localStorage AuthProvider.tsx, 3-role AuthGate.tsx, and demo admin button with real server sessions, registration without Builder/Org split, recovery flow, and persistent onboarding.
+Dependencies: Human approval of Backend/DB/Auth architecture (Section 8).
+Acceptance Target: Single account signup → Spartan Newbie onboarding → session persists across reloads; unauthorized API calls return 403.
+Phase 2: Shared Application Shell, Canonical Navigation & Houses Foundation
+Scope: Build the unified AppLayout, collapsible desktop Sidebar + auto-closing mobile drawer (including mobile menu access on /), functional Topbar (Search, Notifications, permission-gated Quick Create, account/privacy controls), and canonical route architecture: Home, Missions, Houses, Explore (Opportunities, People, Projects, Services, Resources, Discussions), Academy, Events, My Activity, My Profile, plus legacy route <Navigate> redirects. Seed the 6 Houses (Scribes, Heralds, Artisans, Echoes, Forge Masters, Seers), build /houses and tabbed /houses/:slug, wire Primary/Secondary House selection into Newbie onboarding and My Profile, and wire Organisation profile creation/switching.
+Dependencies: Phase 0, Phase 1.
+Acceptance Target: Identical navigation hierarchy across desktop/tablet/mobile (320px, 375px, 768px, 1280px) with zero horizontal overflow and no bottom-nav divergence.
+Phase 3: XP Ledger, Contribution Points & Progression Engine
+Scope: Implement atomic transactional XPTransaction ledger (Earned, Reserved, Transferred, Received, Refunded, Adjustment), derived/reconciled XPBalance (Lifetime, Spendable, Reserved), ContributionRecord, ContributionPointEvent (w/ 3 seasonal caps), 90-day seasonal + all-time LeaderboardSnapshot queries across all 5 categories, seeded configurable 30 numerical levels (0–23,200 XP), 5 Ascendancy ranks (explicitly decoupled from XP), and 19 initial achievements. Wire real data into Sidebar, Home, My Activity (XP History + Progress & Recognition), My Profile, and fixed responsive Leaderboard.
+Dependencies: Phase 1, Phase 2.
+Acceptance Target: All ledger invariants pass concurrency/idempotency tests (Lifetime XP never decreases on spend; Spendable XP never negative); Leaderboards rank strictly by CP and show responsive mobile rows.
+Phase 4: Missions, Funding/Escrow, Evidence Capture, Review & Settlement
+Scope: Implement full Mission domain (10 categories, 4 participation formats, 9 statuses + separate availability flag), guided 7-step Create Mission workflow w/ draft saving & reward-band validation (Micro–Major, >Major approval flag), anti-engagement-farming policy validation, MissionBudget reservation on publish, discovery filters & House-inclusive recommendations, MissionSubmission + EvidenceItem (files/links/text/structured evidence w/ versioning & duplicate prevention), Review queue enforcing no self-review, revision requests, Dispute records preserving original evidence, and idempotent settlement + expiry/cancellation refunds.
+Dependencies: Phase 1, Phase 2, Phase 3.
+Acceptance Target: End-to-end tests verify funded reservation, happy-path approval payout + CP/achievement grant, revision/resubmission, dispute preservation, and expiry/cancel refund.
+Phase 5: Academy, Events & Explore Consolidation
+Scope: Replace static tuples with persistent AcademyContent & LearningCompletion (lessons, modules, learning paths, practical assessments, safety/Web3 foundations triggering configured system XP & CP), dedicated Event & EventParticipation (separating Events from Hackathons; capacity, RSVP, attendance/hosting/support XP & CP under seasonal caps), and Explore subcategories (Opportunities, People, Projects, Services, Resources, Discussions) plus Quick Create (Add a project, Add a service, Publish a resource, Propose an event).
+Dependencies: Phase 2, Phase 3, Phase 4 (for mission-linked assessments/service missions).
+Acceptance Target: Lesson/event completions enforce duplicate/cap rules and update XP/CP/achievements ledger cleanly.
+Phase 6: Stewardship Workspace & Control Room
+Scope: Modularize and implement permission-gated workspaces inside the unified shell: Stewardship Workspace (Elder mentorship/review oversight, Knowledge Vault, Community Health, plus House-scoped Strategos management limited strictly to their assigned House) and Control Room (Members, Onboarding Funnel, Houses & Roles, Content/Events/Opportunities Managers, Missions & XP adjustments, configurable level/XP/CP/achievement/season settings, Escalated Disputes, Analytics, Integrations & Privacy/Security settings, and immutable AuditLog viewer).
+Dependencies: Phase 1–5.
+Acceptance Target: Cross-House boundary tests confirm Strategos A cannot access House B management; every manual adjustment, permission change, and Ascendancy appointment writes an AuditLog entry.
+Phase 7: End-to-End QA, Security Hardening & Viewport Verification
+Scope: Full integration/E2E suite (Playwright + Vitest/API tests), authorization penetration checks (all protected API routes tested against Visitor/Spartan/scoped tokens), accessibility audit (keyboard navigation, focus, contrast, Radix dialogs/tabs), and real-browser verification at 320px, 375px, 768px, and 1280px.
+7. File-Level Preservation and Migration Recommendations
+Every file below was verified for active imports, dynamic usage (App.tsx route maps), and reusable business logic before classification.
+Path	Verified Current Usage	Reusable Logic / Assets	Decision	Migration Plan
+/package.json, /vite.config.ts, /tsconfig*.json, /.oxlintrc.json, /postcss.config.js, /tailwind.config.js	Active build/lint toolchain (vite ^8.3, react 19, ts ~6.0.2, oxlint).	Build config & Tailwind theme structure.	KEEP / ADAPT	Retain build tooling; add test runner (vitest/playwright), backend server script (server.ts), and prune unused packages if unneeded.
+/index.html, /public/favicon.svg, /public/icons.svg	HTML shell & fonts (Inter, Outfit, JetBrains Mono).	Typography imports & icon assets.	ADAPT	Update meta/title for Arena product positioning; remove conflicting class="dark" if unified light/dark theme tokens don't use it.
+/src/main.tsx	Imports index.css → App.css → theme.css + BrowserRouter.	Entry mount.	ADAPT	Replace 3-CSS import chain with single unified stylesheet; mount auth/query providers cleanly.
+/src/index.css, /src/App.css, /src/theme.css	Conflicting 3-layer cascade (theme.css:272-284 !important breaks hierarchy & mobile buttons).	Responsive breakpoints & card layout grid concepts.	REPLACE	Consolidate into one token-driven Tailwind/CSS design system; eliminate * { !important } overrides and fix .rank-row, .podium-person, .profile-identity mobile CSS.
+/src/App.tsx	Maps PUBLIC_PAGES, MEMBER_PAGES, ORG_PAGES, ADMIN_PAGES, AUTH_PATHS.	Declarative router structure.	REPLACE	Rebuild route tree around unified shell (Home, Missions, Houses/:slug, Explore, Academy, Events, My Activity, My Profile, Stewardship, Control Room) + legacy <Navigate> redirects.
+/src/app/navigation.ts	Exports page lists, slug(), pagePath(), titleForPath().	slug() / titleForPath() helpers.	REPLACE / ADAPT	Replace split role-page arrays with canonical primary/personal/permission-gated route definitions; retain/extend path formatting helpers.
+/src/app/AuthProvider.tsx, /src/app/authContext.ts, /src/app/authRoutes.ts, /src/components/AuthGate.tsx, /src/components/auth/AuthForm.tsx, /src/components/auth/AuthBrandPanel.tsx, /src/pages/auth/AuthPage.tsx	Client-side localStorage auth w/ 3 roles, 1-click admin demo, broken completeOnboarding() persistence.	Form layout structure (AuthPage, AuthBrandPanel).	REPLACE (logic) / ADAPT (shell UI)	Replace with backend session auth, single Spartan registration (no Builder/Org picker), Newbie House-selection onboarding, PermissionGate, and real password recovery.
+/src/app/AppState.tsx, /src/app/appStateContext.ts	Holds search string and toast flash().	Global toast feedback pattern.	ADAPT	Separate transient UI toast notifications from global ⌘K search query/API calls and persistent notification store.
+/src/layouts/AppLayout.tsx	Conditionally renders Sidebar (hidden on /), .mobile-scrim, Topbar, <Outlet />.	Mobile scrim pattern & layout wrapper.	ADAPT	Add desktop Sidebar collapse state, enable mobile drawer on /, and auto-close drawer on navigation.
+/src/components/Sidebar.tsx	Left nav groups + hardcoded Lvl 08 / 2,450 XP card + 3 badge; NavLink omits onClose.	Visual card/group structure & user mini-card.	ADAPT	Wire canonical nav groups, desktop collapse toggle, mobile auto-close, working Org/context switcher, and real Lifetime/Spendable XP + Level 1–30 data.
+/src/components/Topbar.tsx	Landing nav (hidden <=700px), breadcrumbs, decorative ⌘K search, toast bell, role CTA.	Header anatomy.	ADAPT	Wire real ⌘K search dialog across all entities, live Notification popover, permission-aware Quick Create menu, Account/Privacy menu, and landing mobile drawer button.
+/src/components/Brand.tsx, /src/components/StatCard.tsx, /src/components/EmptyState.tsx, /src/components/PageScaffold.tsx, /src/components/IconForPage.tsx	Active UI primitives used across pages.	Clean reusable markup.	KEEP / ADAPT	Keep Brand, StatCard, EmptyState, PageScaffold; add canonical Arena nav icons (Missions, Houses, Academy, Stewardship, Control Room) to IconForPage.
+/src/components/PageHeader.tsx	Renders header + Create opportunity button on /opportunities for all users.	Intro layout.	ADAPT	Gate contextual action buttons by authenticated permission claims (mission.create, etc.) rather than unauthenticated page name checks.
+/src/components/ListingCard.tsx	Active card component with local useState bookmark toggle.	Card UI anatomy.	ADAPT	Bind saved/bookmark state to backend Saved API; parameterize for Missions vs. Explore cards.
+/src/components/ProfileForm.tsx	Hardcoded "Jordan Davis" 5-field stub reused for Edit Profile, Settings, and Create Opportunity.	Form grid styling.	REPLACE	Split into domain-specific backed forms: Profile Editor, Private Account/Privacy Settings, and 7-step Mission Creation Wizard.
+/src/components/WorkspaceOverview.tsx	Member dashboard layout (receives noop flash from WorkspaceExperiences.tsx:57).	Dashboard card grid skeleton.	ADAPT	Evolve into Home (NAV-001) with New Spartan onboarding panel, recommended missions, House pulse, upcoming events, XP/Ascendancy card, and CP leaderboard preview.
+/src/components/workspace/WorkspaceExperiences.tsx	Monolithic 151-line file holding 15+ unrelated member, org, and admin views + MessagesExperience.	Individual card/panel UI patterns (Notifications, Achievements layout, Moderation queue).	REPLACE / SPLIT	Remove MessagesExperience completely; split remaining views into dedicated modules (missions/, activity/, profile/, stewardship/, control-room/) connected to real APIs and Spec v1.0 models.
+/src/components/public/PublicPageExperience.tsx	Holds CommunityDirectory, LearningDirectory, OrganizationDirectory, ResourceDirectory, DiscussionBoard, Leaderboard.	Visual card/row layouts.	REPLACE / ADAPT	Replace CommunityDirectory with the 6 Houses directory & tabbed /houses/:slug. Adapt LearningDirectory → Academy, Leaderboard → CP/Seasonal/5-category leaderboards, and Organizations/Resources/Discussions → Explore tabs.
+/src/pages/public/LandingPage.tsx, /src/components/landing/* (HeroSection, OpportunityHighlights, CommunitySection, Newsletter, LandingFooter)	Public / page using NexusHero.png, NexusHeroBg.jpg, and top 3 static listings.	Visual design & hero assets.	ADAPT	Align copy/metrics to The Arena's positioning (Learn. Discover. Build. Contribute. Grow., 6 Houses, Missions, Academy), connect live public highlights/newsletter endpoint, fix mobile nav & hero stacking.
+/src/pages/public/DirectoryPage.tsx, /src/components/public/DirectoryShowcase.tsx, /src/pages/public/GeneralPage.tsx	Shared directory wrapper (Events aliases Hackathon; fake 1,284 count; identical 4 items).	Filter bar, sort pills, empty-state handling.	ADAPT	Separate Missions, Explore subcategories, and Events into real API-backed views with working sort/category/House/reward filters and real counts.
+/src/pages/member/MemberPage.tsx, /src/pages/organization/OrganizationPage.tsx, /src/pages/admin/AdminPage.tsx	Role-segregated wrappers around WorkspaceExperience.	PageScaffold wrapper pattern.	REPLACE	Retire OrganizationPage & AdminPage role silos; route personal views (My Activity, My Profile) and permission-gated workspaces (Stewardship, Control Room) inside one unified app tree.
+/src/pages/NotFoundPage.tsx	Fallback 404 page.	Clean 404 layout.	KEEP	Retain as catch-all route.
+/src/data/listings.ts, /src/data/pageContent.ts	Static 4 listings + page subtitles + unused feedItems.	Temporary copy structure (descriptions).	REPLACE / REMOVE	Replace listings.ts with seeded backend data; remove unused feedItems from pageContent.ts.
+/src/data/mockData.ts, /src/types/index.ts, /src/lib/utils.ts	mockData.ts unused; types/index.ts used only by mockData.ts; utils.ts unused (Explorer -> Pioneer 6-level stub conflicts with 30-level spec).	formatNumber, formatDate, formatRelativeTime in utils.ts.	REMOVE / ADAPT	Delete mockData.ts; replace types/index.ts with canonical Spec v1.0 shared API/domain contracts; keep only pure date/number formatters from utils.ts (if Tailwind cn isn't needed or keep cn).
+/src/components/FeedCard.tsx, /src/components/landing/SignalStrip.tsx, /src/assets/hero.png, /src/assets/react.svg, /src/assets/vite.svg	Zero imports anywhere in /src/.	None.	REMOVE	Delete orphaned dead components and unused image assets.
+8. Outstanding Technical & Governance Decisions
+All 30 level thresholds, 5 Ascendancy ranks + Spartan identity, 12 system XP values, 4 mission reward bands, 14 CP values + seasonal caps, 5 leaderboard categories, and 19 achievements are already established as configurable BASELINE values in Spec v1.0 and are NOT open blockers.
+Only genuine unresolved decisions (aligned with Spec §16 and system architecture choices) remain for stakeholder/human approval:
+Technical Provider Decisions (Required Before Phase 1)
+Final Database & Backend API Architecture: Approve Option A (server.ts Express API + Managed PostgreSQL, e.g., AI Studio Cloud SQL) vs. Option B (Firebase/Firestore) vs. Option C (External BaaS).
+Production Authentication & Connected-Account Strategy: Confirm session mechanism (HTTP-only session cookies vs. managed auth tokens), password reset email provider, and whether Web3 wallet / social linking in Settings is connect-only identity metadata in v1.0.
+File & Evidence Storage Provider + Retention Rules: Confirm object storage provider (e.g., GCS/S3 signed uploads vs. URL-only at initial launch), file size/MIME caps, and evidence-retention windows (Spec §16).
+Operational & Governance Rules (Spec §16 — Required Before Phases 4–6)
+Ascendancy Appointment Authority: Exact authority matrix for appointing Vanguard, Gladiator, Strategos, Elder, and Champion.
+Reviewer Appointment, Replacement & Multi-Allocation Rules: Rules for assigning/replacing non-creator reviewers (Elder/Strategos/designated) and handling multi-contributor mission budget splits / partial completion payouts.
+Pre-Publication Mission Moderation Scope: Which mission categories or reward tiers (in addition to >Major >1,500 XP) require mandatory pre-publication moderation before going Published/Active.
+Organisation Verification Workflow: Minimum checks required for any Spartan-created Organisation profile (ACC-002) to gain verified sponsor badge or sponsor-funded mission privileges.
+Notification Delivery Channels & Preferences: Confirm in-app notifications only for v1.0 vs. email/digest channels.
+Final Academy Content Catalogue: Curated lesson/module/path content and practical assessment rubrics to seed AcademyContent (Spec §2.2 explicitly instructs not to invent the operational content catalogue).
+Final Administrative Permission Matrix: Fine-grained permission defaults across House manager, Mentor, Event manager, Content manager, Moderator, Finance administrator, and Platform administrator.
+9. Final Implementation Readiness Assessment
+Assessment Area	Current Readiness	Summary
+Product Specification Clarity	READY (HIGH)	Master Specification v1.0 provides complete entity models, lifecycles, XP/CP invariants, baseline progression/achievement tables, navigation, and MVP boundaries.
+Build & Toolchain Baseline	READY (HIGH)	Vite 8 + React 19 + TypeScript + oxlint build cleanly on port 3000 with modular folder structure (src/app, src/layouts, src/components, src/pages).
+UI & Styling Readiness	NOT READY (BLOCKED BY CSS CASCADE)	Requires Phase 0 cleanup to eliminate theme.css !important overrides, remove MessagesExperience/dead code, and fix mobile nav & leaderboard/profile layouts.
+Backend, Auth & Ledger Readiness	NOT READY (BLOCKER FOR ALL FEATURES)	Zero backend/DB exists today; localStorage multi-role prototype must be replaced before Missions, XP/CP, Houses, or RBAC can work safely.
+Recommended Next Step	AWAITING HUMAN APPROVAL	Confirm the architectural options in Section 8 (specifically Backend/DB/Auth/Storage stack) and authorize Phase 0 (Cleanup & CSS/Design System Stabilization) followed by Phase 1 (Persistence, Unified Identity & Scoped RBAC).

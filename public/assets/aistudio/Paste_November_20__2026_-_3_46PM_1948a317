@@ -1,0 +1,2305 @@
+# THE ARENA
+# Master Product & Implementation Specification
+
+**Document status:** Product baseline consolidated  
+**Version:** 1.0  
+**Date:** 20 November 2026  
+**Project:** The Arena  
+**Repository:** `https://github.com/CodeKyng/theArena`  
+**Current preview:** `https://thearena-alpha.vercel.app/`  
+**Additional landing page reference:** `https://the-arena-omega.vercel.app/`  
+**Intended implementation environment:** Google AI Studio — Gemini 4 Hydrogen  
+**Document purpose:** Authoritative product specification and source of truth for the subsequent repository audit, technical planning and implementation.
+
+---
+
+# 0. Document authority and interpretation
+
+This document consolidates the five product-planning areas agreed for The Arena:
+
+1. Product direction and positioning.
+2. Navigation and interface structure.
+3. Accounts, roles and Houses.
+4. Missions.
+5. XP, progression, rewards and recognition.
+
+It is the authoritative reference for the intended product.
+
+It must not be interpreted as a description of the current repository. The existing application may contain functionality that differs from this specification, and the repository must be inspected before any implementation decision is made.
+
+## 0.1 Truth and decision classifications
+
+Use these classifications when interpreting requirements and reporting findings.
+
+| Classification | Meaning |
+|---|---|
+| CONFIRMED | Explicitly established in product planning. |
+| AGREED | Explicitly accepted as part of the product direction. |
+| BASELINE | Initial operating value selected for the specification; configurable later. |
+| PROPOSED | Recommendation not yet explicitly approved. |
+| FUTURE | Intentionally outside the initial implementation scope. |
+| UNKNOWN | Insufficient information to make a reliable decision. |
+| VERIFIED | Confirmed through actual repository inspection or testing. |
+| BLOCKED | Cannot be implemented or verified without a dependency or decision. |
+
+Do not silently turn PROPOSED, FUTURE or UNKNOWN information into CONFIRMED requirements.
+
+## 0.2 Core implementation instruction
+
+The specification governs:
+
+- Product purpose and behaviour.
+- User journeys.
+- Navigation.
+- Account and membership relationships.
+- Permissions.
+- Business rules.
+- Mission lifecycle.
+- XP accounting.
+- Progression.
+- Recognition.
+- Data relationships.
+- MVP requirements.
+- Acceptance criteria.
+
+The existing repository governs the technical facts:
+
+- Actual framework and dependencies.
+- Existing routes and components.
+- Existing state management.
+- Existing authentication.
+- Existing database and storage.
+- Existing API integrations.
+- Existing deployment configuration.
+- Existing implementation quality and limitations.
+
+Where the two differ, report the difference. Do not change the product specification to match an accidental limitation of the existing prototype.
+
+---
+
+# 1. Product direction and positioning
+
+## 1.1 Product definition
+
+The Arena is a community and contribution ecosystem built around learning, discovery, skill development, collaboration, participation and growth.
+
+It provides an environment where people can:
+
+- Discover areas of interest.
+- Learn new skills.
+- Explore the work of other members.
+- Join Houses.
+- Discover and complete missions.
+- Submit proof of work.
+- Receive feedback and recognition.
+- Accumulate XP.
+- Develop their reputation.
+- Find opportunities and collaborators.
+- Create missions and commission work from other members.
+- Progress towards greater responsibilities within the community.
+
+The Arena is not simply a community portal, social network, job board or task marketplace.
+
+It combines these capabilities into one participation ecosystem.
+
+## 1.2 Product positioning
+
+The central positioning is:
+
+**A community for becoming.**
+
+The product journey is:
+
+**Learn. Discover. Build. Contribute. Grow.**
+
+The underlying belief is that people do not need to arrive with everything figured out.
+
+A member can enter as a beginner, discover their interests, develop their abilities, practise, contribute and eventually help other people grow.
+
+The product should support people at different experience levels without making beginners feel excluded or allowing low-effort participation to dominate the ecosystem.
+
+## 1.3 Product philosophy
+
+The Arena should prioritise:
+
+1. Meaningful contribution over superficial engagement.
+2. Learning through practical participation.
+3. Demonstrable proof of work.
+4. Relationships and collaboration.
+5. Recognition of genuine effort and impact.
+6. Opportunities for members to grow.
+7. Responsible leadership and stewardship.
+8. A sustainable internal contribution economy.
+
+The platform must not become an engagement farm where users complete trivial activities solely to accumulate points.
+
+## 1.4 Primary audiences
+
+**New and developing members**
+
+People exploring Web3, creativity, technology, research, communication and other skills.
+
+**Established contributors**
+
+Members with existing skills who want to participate in missions, collaborate and demonstrate their work.
+
+**Creators and sponsors**
+
+Individuals, projects and organisations that need work completed and can fund missions.
+
+**Community leaders**
+
+Strategoi, Elders and other authorised members responsible for coordination, mentorship and stewardship.
+
+**Organisations and projects**
+
+Entities seeking contributors, publishing opportunities, sponsoring missions and building relationships within The Arena.
+
+## 1.5 Core product outcomes
+
+The Arena should enable a member to:
+
+- Join and understand the community.
+- Select primary and secondary Houses.
+- Discover relevant learning material.
+- Find meaningful missions.
+- Participate in individual or collaborative work.
+- Submit evidence of completion.
+- Receive a fair review.
+- Earn XP and recognition.
+- Build a portfolio of contributions.
+- Discover opportunities and collaborators.
+- Eventually take on greater responsibilities.
+
+## 1.6 Scope boundaries
+
+The Arena is not intended to become:
+
+- A conventional social network with unrestricted messaging.
+- A speculative token or trading platform.
+- A simple paid engagement system.
+- A collection of disconnected role-specific applications.
+- A job board that prioritises quick-money participation.
+- A leaderboard where popularity determines member value.
+
+Messaging is explicitly excluded from the current version.
+
+No cash redemption, external XP trading, guaranteed monetary value or tokenisation is approved for the initial release.
+
+No blockchain wallet integration or on-chain XP mechanism is assumed to be an MVP requirement unless separately approved.
+
+---
+
+# 2. Navigation and interface structure
+
+## 2.1 Shared application shell
+
+The Arena must use one unified application shell.
+
+It should support different experiences based on membership, permissions and context without creating separate applications for different ranks.
+
+The navigation structure must remain consistent across desktop, tablet and mobile.
+
+## 2.2 Primary navigation
+
+The six primary destinations are:
+
+1. Home
+2. Missions
+3. Houses
+4. Explore
+5. Academy
+6. Events
+
+### NAV-001 — Home
+
+The shared community hub and member dashboard.
+
+It should contain:
+
+- Welcome and member identity.
+- Membership and progression summary.
+- Relevant announcements.
+- Recommended missions.
+- House activity.
+- Upcoming events.
+- Learning recommendations.
+- Recent contributions.
+- Important notifications or activity previews.
+- Compact leaderboard preview.
+- Contextual onboarding guidance for new Spartans.
+
+Home should adapt its content according to the member's state and permissions.
+
+### NAV-002 — Missions
+
+The main mission discovery and execution area.
+
+Internal views:
+
+- Discover.
+- My Missions.
+- Submissions.
+- History.
+
+A Create Mission action should be available to eligible users.
+
+Mission detail views should support discovery, participation, instructions, evidence submission, review status and relevant updates.
+
+### NAV-003 — Houses
+
+The directory of the six Arena Houses.
+
+Each House should have one comprehensive experience with internal sections:
+
+- Overview.
+- Activity.
+- Missions.
+- Academy.
+- Members.
+- About.
+
+Strategoi and authorised House managers receive additional management capabilities within the relevant House.
+
+### NAV-004 — Explore
+
+A consolidated discovery area containing:
+
+- Opportunities.
+- People.
+- Projects.
+- Services.
+- Resources.
+- Discussions.
+
+These are internal discovery categories, not separate primary navigation destinations.
+
+### NAV-005 — Academy
+
+The learning and development environment.
+
+It should support:
+
+- Web3 foundations.
+- Beginner learning.
+- Wallet safety and relevant digital safety education.
+- Glossary.
+- General learning modules.
+- House-specific learning material.
+- Learning paths.
+- Practical assessments.
+- Workshops and educational resources.
+- Learning progress.
+
+The exact Academy content catalogue is an operational content decision, not something the implementation agent should invent.
+
+### NAV-006 — Events
+
+The Arena's event discovery and participation area.
+
+It should support:
+
+- Upcoming events.
+- Arena-wide events.
+- House sessions.
+- Workshops.
+- AMAs.
+- Onboarding sessions.
+- Portfolio reviews.
+- Event registration.
+- Past events and recordings.
+
+## 2.3 Personal area
+
+### NAV-007 — My Activity
+
+Personal contribution and participation history.
+
+Internal sections:
+
+- Contributions.
+- My Missions.
+- Submissions.
+- Applications.
+- Saved.
+- XP History.
+- Progress & Recognition.
+
+Progress & Recognition contains:
+
+- Numerical level.
+- Lifetime XP.
+- Spendable XP.
+- Achievement collection.
+- Contribution statistics.
+- Leaderboards access.
+- Ascendancy information.
+
+### NAV-008 — My Profile
+
+The consolidated personal identity experience.
+
+Sections:
+
+**Identity**
+- Display name.
+- Username.
+- Profile image.
+- Biography.
+- Public links.
+
+**Arena membership**
+- Spartan status.
+- Ascendancy rank.
+- Primary House.
+- Secondary House.
+- Skills and interests.
+
+**Portfolio**
+- Approved proof of work.
+- Projects.
+- Contributions.
+- Relevant deliverables.
+
+**Recognition**
+- Achievements.
+- XP statistics.
+- Contribution highlights.
+- Leadership history.
+
+**Settings**
+- Account.
+- Security.
+- Notifications.
+- Privacy.
+- Connected accounts.
+- House preferences.
+
+Public profile information and private account settings must be clearly separated.
+
+## 2.4 Role-specific workspaces
+
+These are conditional experiences within the same application.
+
+They do not constitute separate applications.
+
+### New Spartan onboarding mode
+
+A newly registered Spartan receives guided onboarding through Home and relevant product areas.
+
+It includes:
+
+- Welcome.
+- Arena orientation.
+- Rules and expectations.
+- House discovery.
+- Academy recommendations.
+- Introductory missions.
+- Profile guidance.
+- Readiness indicators.
+- Events and support.
+
+There is no separate Newbie account role or Newbie rank.
+
+### Spartan experience
+
+The regular member experience includes:
+
+- Home.
+- Missions.
+- Houses.
+- Explore.
+- Academy.
+- Events.
+- My Activity.
+- My Profile.
+
+### Stewardship workspace
+
+Elders receive additional capabilities:
+
+- Overview.
+- Mentorship.
+- Review Center.
+- House Oversight.
+- Knowledge Vault.
+- Community Health.
+
+Council and advanced governance functions are future capabilities.
+
+### Strategos workspace
+
+Strategoi receive House-specific oversight and coordination tools.
+
+Their permissions are scoped to their assigned House and explicit responsibilities.
+
+### Vanguard and Gladiator tools
+
+Ambassador tools should be introduced according to actual operational needs.
+
+Do not create unnecessary standalone dashboards for these ranks.
+
+### Control Room
+
+A restricted administrative workspace.
+
+Potential sections:
+
+- Overview.
+- Members.
+- Onboarding Funnel.
+- Houses and Roles.
+- Content Manager.
+- Events Manager.
+- Opportunities.
+- Missions and XP.
+- Community Health.
+- Analytics.
+- Integrations and Settings.
+- Audit Log.
+
+Access is controlled through explicit administrative permissions.
+
+## 2.5 Global utilities
+
+These utilities should be accessible throughout the application.
+
+**Search**
+
+Search across relevant Arena content, including missions, people, Houses, projects, opportunities, resources and events.
+
+**Notifications**
+
+Provide updates about:
+
+- Mission participation.
+- Submission status.
+- XP transactions.
+- Achievement unlocks.
+- House activity.
+- Event registration and updates.
+- Applications.
+- Important announcements.
+
+**Quick Create**
+
+Context-aware actions may include:
+
+- Create a mission.
+- Submit proof of work.
+- Publish a resource.
+- Propose an event.
+- Add a project.
+- Add a service.
+- Create an opportunity where authorised.
+
+Available actions must respect permissions and business rules.
+
+**Account controls**
+
+Provide access to profile, settings, preferences and sign-out.
+
+**Privacy and security controls**
+
+Provide access to privacy, visibility, security and connected-account preferences.
+
+**Messaging**
+
+Not included in the current release.
+
+Do not build an empty inbox or placeholder messaging interface.
+
+## 2.6 Responsive behaviour
+
+The same navigation hierarchy must work across all devices.
+
+Desktop:
+- Collapsible left navigation sidebar.
+- Main content workspace.
+- Utility area for search, notifications, XP and account controls.
+- Optional contextual content panels.
+
+Tablet:
+- Compact or collapsible left navigation.
+- Main workspace adapts to available width.
+- Touch-friendly interactions.
+
+Mobile:
+- Collapsible left navigation opening as an overlay or drawer.
+- Same navigation destinations and hierarchy as desktop.
+- No separate bottom-navigation product structure.
+- Main content uses available viewport width.
+- Forms, uploads and dialogs adapt to narrow screens.
+
+All devices must be supported in the initial release.
+
+Responsive requirements:
+
+- No horizontal overflow.
+- No hover-only functionality.
+- Touch-friendly controls.
+- Appropriate text sizing.
+- Mobile-friendly forms and uploads.
+- Full-screen or adapted dialogs on narrow screens.
+- Tables adapt to cards or horizontal scrolling.
+- Mission actions remain accessible.
+- Sidebar can open and close reliably.
+- Search and notification utilities remain usable.
+
+---
+
+# 3. Accounts, membership, roles and Houses
+
+## 3.1 Account model
+
+### ACC-001 — Unified account
+
+Every individual has one Arena account.
+
+Do not force users to select between Builder and Organisation during registration.
+
+A member may participate in several capacities:
+
+- Contributor.
+- Mission creator.
+- Sponsor.
+- Reviewer.
+- Mentor.
+- Service provider.
+- Project owner.
+- Community participant.
+
+These are participation capabilities, not separate account types.
+
+### ACC-002 — Organisation identities
+
+An individual may create or associate with an organisation profile.
+
+Organisation profiles may represent:
+
+- Projects.
+- Brands.
+- Companies.
+- Teams.
+- Community initiatives.
+
+An organisation can publish opportunities, sponsor missions, find contributors and present projects.
+
+An organisation profile must not automatically inherit its owner's personal XP, achievements or Ascendancy rank.
+
+Advanced organisation workspaces and team management may be phased.
+
+## 3.2 Membership states
+
+### Visitor
+
+A person who has not joined The Arena.
+
+Visitors may access the public-facing parts of the platform and explore available information.
+
+### Spartan
+
+Every person who joins The Arena becomes a Spartan.
+
+Spartan is the default membership identity.
+
+Newbie is not a separate account role or rank. It describes a newly joined Spartan's onboarding stage.
+
+## 3.3 Ascendancy ladder
+
+The five levels are:
+
+| Rank | Responsibility and meaning |
+|---|---|
+| Spartan | Default member identity and participation status. |
+| Vanguard | First leadership step; demonstrates initiative and supports part-time ambassador responsibilities. |
+| Gladiator | Proven contributor and full Arena ambassador. |
+| Strategos | Leader of a House; coordinates House activity, missions and members. |
+| Elder | Experienced mentor and steward who supports Spartans and Strategoi. |
+| Champion | Highest Ascendancy level; recognised leadership, mastery and significant impact. |
+
+The progression order is:
+
+**Spartan → Vanguard → Gladiator → Strategos → Elder → Champion.**
+
+Spartan is the membership starting point; the remaining five are Ascendancy leadership ranks.
+
+### ACC-003 — Leadership appointments
+
+XP can indicate readiness and support eligibility.
+
+XP must not automatically appoint someone to a leadership position.
+
+Leadership appointments require appropriate assessment, demonstrated contribution, reliability and trust.
+
+Elder appointments specifically require demonstrated experience, trust, contribution and an explicit appointment process.
+
+Strategos, Elder and Champion responsibilities must be granted through explicit appointment and permission processes.
+
+## 3.4 Permission architecture
+
+Rank, House affiliation and permissions are independent.
+
+Potential permission scopes:
+
+- Mission creator.
+- Mission reviewer.
+- House manager.
+- Mentor.
+- Event manager.
+- Content manager.
+- Moderator.
+- Finance administrator.
+- Platform administrator.
+
+Permissions must be explicit and scoped.
+
+Examples:
+
+- A Strategos may manage their assigned House without accessing other Houses' private management functions.
+- An Elder may mentor and review without automatically receiving platform-wide administration.
+- A mission reviewer may review assigned submissions without access to unrelated financial operations.
+- A platform administrator may receive broader privileges only through an explicit administrative grant.
+
+Enforce permissions on the server or authoritative backend, not only in the interface.
+
+Apply least privilege.
+
+## 3.5 House model
+
+The six Houses are permanent central organisational spaces.
+
+### HOUSE-001 — Scribes
+
+Focus:
+- Writing.
+- Storytelling.
+- Narratives.
+- Documentation.
+- Campaign content.
+- Communication.
+
+### HOUSE-002 — Heralds
+
+Focus:
+- Speaking.
+- Hosting.
+- Event coordination.
+- Community communication.
+- Welcoming members.
+- Announcements.
+
+### HOUSE-003 — Artisans
+
+Focus:
+- Design.
+- Illustration.
+- Editing.
+- Memes.
+- Visual assets.
+- Creative production.
+
+### HOUSE-004 — Echoes
+
+Focus:
+- Distribution.
+- Amplification.
+- Outreach.
+- Campaign support.
+
+Echoes remains a House and also supports an opt-in outreach participation capability.
+
+Members from other Houses may participate in eligible Echoes missions without changing House affiliation.
+
+Outreach activities must comply with applicable platform rules. The system must not reward artificial engagement or metric manipulation.
+
+### HOUSE-005 — Forge Masters
+
+Focus:
+- Development.
+- Technology.
+- Building.
+- Experiments.
+- Technical innovation.
+
+### HOUSE-006 — Seers
+
+Focus:
+- Research.
+- Analysis.
+- Ecosystem scouting.
+- Opportunity discovery.
+- Reports and insights.
+
+## 3.6 Primary and secondary Houses
+
+Every Spartan can select:
+
+- One primary House.
+- One secondary House.
+
+House selection supports recommendations, learning and organisation.
+
+It must not prevent members from participating in missions from other Houses.
+
+Members can update their House preferences as their interests develop.
+
+House affiliation is not a permission grant.
+
+## 3.7 House experience
+
+Each House has one comprehensive experience with:
+
+- Overview.
+- Activity.
+- Missions.
+- Academy.
+- Members.
+- About.
+
+House management features are displayed only to authorised users.
+
+## 3.8 Future teams
+
+Member-created teams and smaller communities are future capabilities.
+
+They may operate within or across Houses.
+
+Examples:
+
+- An Artisan and Scribe working on a content project.
+- A Forge Master and Seer collaborating on a research-based product.
+- Members from multiple Houses forming a team around a mission.
+
+Do not build a complex independent team/community system as an MVP prerequisite.
+
+---
+
+# 4. Missions
+
+## 4.1 Mission definition
+
+A mission is a structured opportunity for a member or group to contribute, learn, collaborate or deliver a defined outcome.
+
+Every mission should establish:
+
+- Objective.
+- Creator or sponsor.
+- Instructions.
+- Eligibility.
+- Participation format.
+- Deliverables.
+- Evidence requirements.
+- Deadline or completion conditions.
+- Reward, where applicable.
+- Review and verification process.
+- Lifecycle and settlement rules.
+
+Missions are the operational heart of The Arena.
+
+## 4.2 Mission categories
+
+The initial category system is:
+
+1. Social and Outreach.
+2. Creative and Design.
+3. Writing and Research.
+4. Technical and Development.
+5. Learning and Education.
+6. Events and Participation.
+7. Community and Operations.
+8. Offline and IRL.
+9. Collaboration.
+10. Custom.
+
+A mission has one primary category and may have additional tags.
+
+Categories organise discovery and reporting; they do not impose inflexible mission formats.
+
+## 4.3 Mission creation eligibility
+
+Eligible creators include:
+
+- Individual Spartans.
+- Organisations.
+- Project owners.
+- House leadership.
+- Elders or authorised managers.
+- Arena administrators.
+
+Mission creation permission and funding capacity are separate.
+
+A Spartan may be allowed to create a non-rewarded mission without having enough Spendable XP to fund a rewarded mission.
+
+Before publishing a mission, verify:
+
+1. Account eligibility.
+2. Permission to create that mission type.
+3. Funding capacity, if rewards are attached.
+4. Content and platform-policy compliance.
+5. Required mission fields and review configuration.
+
+## 4.4 Participation formats
+
+Four formats are supported:
+
+**Open participation**
+
+Eligible members can join and submit.
+
+**Application-based**
+
+Members apply and the creator selects participants.
+
+**Team-based**
+
+Members collaborate towards one objective.
+
+**Automatic or guided participation**
+
+Members complete a defined sequence, such as an Academy activity or onboarding mission.
+
+These are participation formats, not mission categories.
+
+## 4.5 Mission data structure
+
+A mission record should contain:
+
+**Identity**
+- Mission ID.
+- Title.
+- Description.
+- Category.
+- Tags.
+- Cover image.
+
+**Ownership**
+- Creator.
+- Sponsoring organisation.
+- Associated House.
+- Responsible manager.
+
+**Objective**
+- Desired outcome.
+- Instructions.
+- Steps.
+- Deliverables.
+- Restrictions.
+
+**Participation**
+- Participation format.
+- Eligibility.
+- Capacity.
+- Application requirements.
+- Team requirements where applicable.
+
+**Platform and location**
+- Relevant platform.
+- Website.
+- Event.
+- Physical location.
+- Other context, where relevant.
+
+**Evidence**
+- Required evidence types.
+- Submission instructions.
+- Verification criteria.
+
+**Schedule**
+- Publication date.
+- Start date.
+- Deadline.
+- Expiry.
+
+**Reward**
+- XP budget.
+- Funding source.
+- Allocation rules.
+- Reservation and settlement status.
+
+**Review**
+- Assigned reviewer.
+- Evaluation criteria.
+- Approval rules.
+- Dispute handling.
+
+**Lifecycle**
+- Draft.
+- Pending review.
+- Published.
+- Active.
+- Paused.
+- Completed.
+- Cancelled.
+- Expired.
+- Archived.
+
+## 4.6 Mission creation workflow
+
+The creation process should be guided:
+
+1. Define mission.
+2. Set participation requirements.
+3. Define deliverables and evidence.
+4. Configure reward and budget.
+5. Configure review and verification.
+6. Set schedule.
+7. Review and publish.
+
+Creators can save drafts.
+
+Templates may prepopulate common mission fields without restricting custom missions.
+
+## 4.7 Mission discovery
+
+The Missions area contains:
+
+- Discover.
+- My Missions.
+- Submissions.
+- History.
+
+A Create Mission action appears where permitted.
+
+Discovery filters:
+
+- Category.
+- House.
+- XP reward.
+- Difficulty or experience level.
+- Individual or team.
+- Open or application-based.
+- Deadline.
+- Platform or location.
+- Status.
+
+Recommendations may consider:
+
+- Primary House.
+- Secondary House.
+- Skills.
+- Interests.
+- Learning progress.
+- Previous contributions.
+
+Recommendations must not restrict discovery across Houses.
+
+## 4.8 Mission detail experience
+
+Every mission detail view should present:
+
+- Mission overview.
+- Objective.
+- Instructions.
+- Deliverables.
+- Eligibility.
+- Participation requirements.
+- Reward and budget.
+- Deadline.
+- Evidence requirements.
+- Creator and sponsor.
+- Relevant participants.
+- Updates and activity.
+
+Primary actions vary according to participation format:
+
+- Join Mission.
+- Apply.
+- Join Team.
+- Start Activity.
+- Submit Work.
+
+## 4.9 Evidence and proof of work
+
+Supported evidence types:
+
+- Text.
+- Images.
+- Files.
+- Links.
+- Video and audio.
+- Structured responses.
+- Attendance verification.
+- Reviewer confirmation.
+
+Mission creators define acceptable evidence before publication.
+
+Evidence records should support:
+
+- Upload or link.
+- Timestamp.
+- Submission version.
+- Resubmission history.
+- Reviewer comments.
+- Status.
+- Approval or rejection reason.
+
+A screenshot alone may not be sufficient to establish completion of every activity.
+
+The system must allow stronger verification where appropriate.
+
+AI may assist with evidence checking and reviewer workflows in a future phase, but human review must remain available, particularly for disputes and high-value decisions.
+
+## 4.10 Submission lifecycle
+
+A submission may have these states:
+
+1. Submitted.
+2. Under review.
+3. Revision requested.
+4. Approved.
+5. Rejected.
+6. Disputed, where applicable.
+
+Reviewers must compare evidence against the published mission criteria.
+
+A member must not review their own submission.
+
+Reviewers may include:
+
+- Mission creator.
+- Assigned reviewer.
+- Authorised House manager.
+- Elder or designated reviewer.
+- Arena administrator.
+
+## 4.11 Mission XP funding
+
+Reward-funded missions use Spendable XP.
+
+When a mission is published successfully:
+
+- The creator's available Spendable XP is checked.
+- The mission budget is reserved.
+- Participants see the published reward rules.
+- Approved submissions become eligible for allocation.
+- XP is transferred according to the predefined rules.
+- Unused funds are refunded at settlement.
+
+A creator cannot arbitrarily change the reward allocation after participation begins.
+
+For partial completion, the published settlement rules govern the outcome.
+
+### Recommended per-contributor reward guidance
+
+| Mission scope | Suggested reward |
+|---|---:|
+| Micro | 25–75 XP |
+| Standard | 100–250 XP |
+| Substantial | 300–750 XP |
+| Major | 800–1,500 XP |
+
+Rewards above the major band require additional approval.
+
+These are initial configurable guidelines, not fixed prices for every mission.
+
+## 4.12 Mission settlement
+
+Settlement must account for:
+
+- Full completion.
+- Partial completion.
+- Unused funds.
+- Cancellation.
+- Expiry.
+- Refunds.
+- Approved payouts.
+- Disputes.
+
+All XP movement must be recorded in the XP ledger.
+
+## 4.13 Disputes and exceptional cases
+
+The system must account for:
+
+- Missed deadlines.
+- Incomplete submissions.
+- Revision requests.
+- Rejections.
+- Disputes.
+- Creator inactivity.
+- Mission cancellation.
+- No submissions.
+- Partial completion.
+- Duplicate or fraudulent evidence.
+- Reported missions.
+
+Dispute records must preserve the original evidence, review decisions and comments.
+
+## 4.14 Mission and submission statuses
+
+Mission statuses:
+
+- Draft.
+- Pending review.
+- Published.
+- Active.
+- Paused.
+- Completed.
+- Cancelled.
+- Expired.
+- Archived.
+
+Submission statuses:
+
+- Submitted.
+- Under review.
+- Revision requested.
+- Approved.
+- Rejected.
+- Disputed.
+
+Participation availability is represented separately so that a mission can stop accepting participants while remaining active for existing participants.
+
+## 4.15 Team missions
+
+The product model supports team missions.
+
+Team functionality should eventually include:
+
+- Team formation.
+- Responsibilities.
+- Multiple contributors.
+- Shared deliverables.
+- Contribution attribution.
+- Team and individual reward allocation.
+
+For the initial release, prioritise individual missions and a basic team-participation model where necessary.
+
+Do not assume every team member made an equal contribution.
+
+## 4.16 Mission MVP
+
+Required:
+
+- Create and publish missions.
+- Individual participation.
+- Application-based participation.
+- Discovery and filtering.
+- Categories and tags.
+- Evidence uploads and links.
+- Submission review.
+- Revision and feedback.
+- XP reservation and settlement.
+- Mission history.
+- Audit trail.
+- Basic dispute and reporting process.
+- Guided learning missions.
+
+Phased:
+
+- Advanced team management.
+- Automated verification.
+- AI-assisted review.
+- Advanced reward allocation.
+- Advanced analytics.
+- External reward integrations.
+
+---
+
+# 5. XP, progression, rewards and recognition
+
+## 5.1 XP purpose
+
+XP is The Arena's internal contribution and progression system.
+
+It has three purposes:
+
+1. Measure accumulated contribution.
+2. Support numerical progression and recognition.
+3. Enable internal exchange through mission funding and commissioned work.
+
+## 5.2 Two XP balances
+
+### Lifetime XP
+
+Total XP earned through recognised contributions.
+
+It determines numerical level progression.
+
+Spending XP does not reduce Lifetime XP.
+
+### Spendable XP
+
+The available internal XP credit a member can allocate.
+
+It can be used to:
+
+- Fund missions.
+- Commission work.
+- Allocate rewards to contributors.
+- Participate in permitted future internal reward mechanisms.
+
+Reserved XP is tracked separately from available Spendable XP.
+
+## 5.3 XP balance rules
+
+| Event | Lifetime XP | Spendable XP |
+|---|---:|---:|
+| Earn system-awarded XP | Increase | Increase |
+| Receive approved mission reward | Increase | Increase |
+| Reserve XP for a mission | Unchanged | Available balance decreases |
+| Spend reserved XP on an approved contributor | Unchanged for creator | Creator's reserved amount decreases |
+| Receive transferred mission XP | Increase | Increase |
+| Refund unused mission XP | Unchanged | Available balance increases |
+| Spend XP on a service mission | Unchanged for creator | Decreases through reservation and settlement |
+
+A member's Lifetime XP must never decrease merely because they spend XP.
+
+## 5.4 XP sources
+
+Two principal sources:
+
+**System-awarded XP**
+
+XP awarded by The Arena for eligible, verified activities.
+
+**Member-funded XP**
+
+XP reserved by a creator or sponsor and transferred to contributors after approved completion.
+
+System awards and member-funded rewards must be separately identifiable in the transaction ledger.
+
+## 5.5 Initial system XP values
+
+These values are the initial configurable baseline.
+
+| Activity | XP |
+|---|---:|
+| Complete Arena orientation and rules check | 20, once |
+| Complete an Academy lesson with knowledge check | 5 |
+| Complete an Academy module | 20 |
+| Complete a learning path | 75 |
+| Pass a practical learning assessment | 25–100 |
+| Complete a verified community-support task | 10–25 |
+| Attend an eligible Arena event | 5 |
+| Support an event in an assigned role | 25–50 |
+| Host or organise an event | 50–100 |
+| Complete a verified mentorship session | 20 |
+| Complete an assigned House responsibility | 25–75 |
+| Complete an assigned leadership responsibility | 25–100 |
+
+Rules:
+
+- Profile completion does not earn XP.
+- House selection does not earn XP.
+- Login streaks do not earn XP.
+- Raw likes, follows, reposts, views and comment counts do not earn XP.
+- Duplicate or unverified work does not earn XP.
+- A mission-funded reward is not supplemented by an automatic duplicate system reward.
+
+## 5.6 Mission reward values
+
+Mission creators define rewards within published rules.
+
+Recommended per-contributor guidance:
+
+- Micro: 25–75 XP.
+- Standard: 100–250 XP.
+- Substantial: 300–750 XP.
+- Major: 800–1,500 XP.
+
+Rewards above this range require additional approval.
+
+The total reserved budget must account for the number of participants and the allocation method.
+
+## 5.7 Numerical levels
+
+Thirty numerical levels.
+
+Levels use cumulative Lifetime XP thresholds.
+
+| Level | Required Lifetime XP |
+|---:|---:|
+| 1 | 0 |
+| 2 | 100 |
+| 3 | 250 |
+| 4 | 450 |
+| 5 | 700 |
+| 6 | 1,000 |
+| 7 | 1,350 |
+| 8 | 1,750 |
+| 9 | 2,200 |
+| 10 | 2,700 |
+| 11 | 3,250 |
+| 12 | 3,850 |
+| 13 | 4,500 |
+| 14 | 5,200 |
+| 15 | 5,950 |
+| 16 | 6,750 |
+| 17 | 7,600 |
+| 18 | 8,500 |
+| 19 | 9,450 |
+| 20 | 10,450 |
+| 21 | 11,500 |
+| 22 | 12,600 |
+| 23 | 13,750 |
+| 24 | 14,950 |
+| 25 | 16,200 |
+| 26 | 17,500 |
+| 27 | 18,850 |
+| 28 | 20,250 |
+| 29 | 21,700 |
+| 30 | 23,200 |
+
+Thresholds are cumulative and configurable.
+
+The interface should display:
+
+- Current level.
+- Lifetime XP.
+- Progress towards next level.
+- XP remaining to next level.
+
+## 5.8 Ascendancy relationship
+
+Numerical level and Ascendancy rank are independent.
+
+Lifetime XP indicates accumulated progression.
+
+Ascendancy represents recognised responsibility, leadership and trust.
+
+XP can inform eligibility but cannot automatically appoint someone to a leadership rank.
+
+## 5.9 Contribution Points
+
+Contribution Points (CP) are a separate, non-transferable ranking measure.
+
+They are not XP.
+
+They cannot be spent, transferred or exchanged.
+
+They exist to determine Leaderboard rankings based on verified contribution.
+
+### Initial CP values
+
+| Activity | CP |
+|---|---:|
+| Approved micro mission | 5 |
+| Approved standard mission | 15 |
+| Approved substantial mission | 30 |
+| Approved major mission | 50 |
+| Academy lesson with knowledge check | 1 |
+| Academy module | 5 |
+| Completed learning path | 15 |
+| Verified practical assessment | 5–15 |
+| Verified community-support contribution | 5 |
+| Eligible event attendance | 1 |
+| Event support role | 5 |
+| Event hosting or organisation | 10 |
+| Verified mentorship session | 10 |
+| Approved House responsibility | 10 |
+
+Mission contribution tiers must be set before publication and cannot be changed retrospectively to favour a participant.
+
+### CP integrity rules
+
+- Award CP once per approved contribution.
+- Prevent duplicate scoring of the same deliverable.
+- Prevent artificial splitting of one task into multiple missions.
+- Attribute team contribution according to verified individual responsibility.
+- Do not award full team CP to every member automatically.
+- Do not award CP for raw engagement metrics.
+- Do not allow self-approval.
+
+Initial seasonal limits for repetitive low-intensity activity:
+
+- Event attendance: maximum 10 CP per member per season.
+- Non-mission community-support tasks: maximum 50 CP per member per season.
+- Mentorship: maximum 60 CP per mentor/mentee pair per season.
+
+Mission contributions, distinct learning milestones and approved House responsibilities are not subject to a blanket overall CP cap, but duplicate and repetitive activity must be controlled.
+
+CP values and limits must be configurable.
+
+## 5.10 Leaderboards
+
+Leaderboards are part of the product.
+
+They are not a primary navigation destination.
+
+### Categories
+
+1. Overall Contributors.
+2. House Rankings.
+3. Mission Contributors.
+4. Learning & Growth.
+5. Community & Stewardship.
+
+House Rankings have six views, one per House.
+
+No separate engagement-farming leaderboard is permitted.
+
+### Ranking periods
+
+- Current season: 90 days.
+- All-time historical record.
+
+The all-time record is an archive of historical achievement, not the primary competitive ranking.
+
+### Ranking rules
+
+- Use Contribution Points, not Spendable XP.
+- Use verified contribution records.
+- Do not count duplicate work.
+- Do not double-count one contribution across multiple categories in the overall ranking.
+- Respect category-specific scoring rules.
+- Apply seasonal limits.
+- Preserve historical snapshots for completed seasons.
+- Use tied ranks where scores are equal.
+- Provide appropriate privacy and visibility controls.
+
+### Placement
+
+Home:
+- Compact leaderboard preview.
+
+My Activity → Progress & Recognition:
+- Personal progression and Leaderboard access.
+
+Leaderboard view:
+- Dedicated category and period filters.
+
+Public profile:
+- Relevant achievements and contribution highlights.
+
+## 5.11 Achievement catalogue
+
+Achievements are recognition markers.
+
+They do not automatically award extra XP unless a separate reward rule explicitly defines a bonus.
+
+### MVP achievement catalogue
+
+| Achievement | Unlock condition |
+|---|---|
+| Arena Ready | Complete onboarding orientation and rules check. |
+| First Contribution | Receive first approved mission contribution. |
+| Mission Maker | Create a mission successfully completed by another member. |
+| Reliable Contributor | Complete five approved missions across at least three different dates. |
+| Mission Veteran | Receive 25 approved mission contributions. |
+| Academy Starter | Complete five Academy modules. |
+| Path Finisher | Complete an entire learning path. |
+| Practical Learner | Pass three verified practical assessments. |
+| Cross-House Collaborator | Make approved contributions in three different Houses. |
+| House Pillar | Make ten approved contributions within one House. |
+| Community Builder | Complete ten verified community-support contributions. |
+| Event Steward | Support or host three Arena events. |
+| Mentor's Mark | Complete three verified mentorship sessions. |
+| Scribe's Mark | Complete an approved writing deliverable. |
+| Herald's Voice | Complete an approved speaking, hosting or communication deliverable. |
+| Artisan's Craft | Complete an approved creative deliverable. |
+| Echoes' Reach | Complete an approved, policy-compliant outreach deliverable. |
+| Forge Mark | Complete an approved technical deliverable. |
+| Seer's Insight | Complete an approved research deliverable. |
+
+Achievement definitions should be stored as configurable records rather than hardcoded into unrelated UI components.
+
+Ascendancy ranks are separate from achievements.
+
+## 5.12 Rewards beyond XP
+
+Three layers:
+
+**Internal XP rewards**
+
+- Mission rewards.
+- Commissioned work.
+- Internal XP transfers.
+
+**Recognition-based benefits**
+
+- Achievements.
+- Commendations.
+- Selected learning experiences.
+- Eligibility for selected programmes.
+
+**Future tangible rewards**
+
+Potential future benefits include sponsored opportunities, merchandise, learning experiences and other approved rewards.
+
+These are future capabilities, not promises that XP has monetary value.
+
+XP is an internal platform credit for the initial release.
+
+No cash redemption, external trading, token price, liquidity mechanism or tokenisation is approved.
+
+## 5.13 XP ledger
+
+Every XP movement must have a corresponding ledger record.
+
+Transaction types:
+
+- Earned.
+- Reserved.
+- Transferred.
+- Received.
+- Refunded.
+- Adjustment.
+
+Ledger fields:
+
+- Transaction ID.
+- Account/member.
+- Amount.
+- Transaction type.
+- Source activity or mission.
+- Creator.
+- Recipient.
+- Timestamp.
+- Status.
+- Authorising reviewer or system process.
+- Reason/reference.
+
+The system must prevent:
+
+- Negative Spendable XP.
+- Duplicate payouts.
+- Duplicate approval processing.
+- Unauthorised adjustments.
+- Untraceable transactions.
+- Self-reward through a creator's own mission submission.
+
+Balances should be derived from or reconciled against the ledger.
+
+## 5.14 MVP progression and recognition requirements
+
+Required:
+
+- Lifetime XP.
+- Spendable XP.
+- XP transaction ledger.
+- Mission-funded XP.
+- XP reservation and refunds.
+- System-awarded XP.
+- Numerical levels.
+- Ascendancy display.
+- Basic achievements.
+- Contribution records.
+- Personal progression dashboard.
+- Basic Leaderboards.
+- House rankings.
+
+Future:
+
+- Advanced seasonal competitions.
+- Advanced reward catalogue.
+- Tangible reward integrations.
+- On-chain XP or tokenisation.
+
+---
+
+# 6. Cross-product data relationships
+
+This section defines the logical data model. It is not a mandate to use a specific database technology.
+
+The actual schema must be designed after inspecting the existing stack and database.
+
+## 6.1 Core entities
+
+| Entity | Purpose |
+|---|---|
+| Account | Individual authentication identity. |
+| MemberProfile | Personal Arena profile and public information. |
+| Organisation | Organisation or project identity. |
+| OrganisationMembership | Relationship between people and organisations. |
+| MembershipStatus | Visitor or Spartan state. |
+| AscendancyAssignment | Current and historical leadership rank. |
+| House | One of the six Houses. |
+| MemberHouseAffiliation | Primary and secondary House relationships. |
+| PermissionGrant | Explicit permissions and scope. |
+| Mission | Mission definition and lifecycle. |
+| MissionParticipation | Member participation or application. |
+| MissionSubmission | Submitted work. |
+| EvidenceItem | Files, links or other proof. |
+| Review | Review decisions and feedback. |
+| MissionBudget | Funding reservation and allocation. |
+| XPTransaction | Immutable or auditable XP movement record. |
+| XPBalance | Derived or reconciled balance projection. |
+| ContributionRecord | Approved record of meaningful work. |
+| ContributionPointEvent | CP awarded for eligible contribution. |
+| AchievementDefinition | Achievement criteria. |
+| MemberAchievement | Achievement earned by a member. |
+| LeaderboardSnapshot | Historical ranking data. |
+| AcademyContent | Learning content and modules. |
+| LearningCompletion | Member learning progress. |
+| Event | Arena event. |
+| EventParticipation | Registration and attendance. |
+| Notification | System notification. |
+| AuditLog | Important system and administrative actions. |
+
+## 6.2 Core relationships
+
+- One account has one individual member profile.
+- One individual may be associated with multiple organisations.
+- One organisation can have multiple members.
+- One member has one current membership status.
+- One member has one current Ascendancy rank, with historical assignments retained.
+- One member has one primary House and may have one secondary House.
+- One House has many members and missions.
+- One member may have multiple permission grants.
+- One creator may create many missions.
+- One mission may have many participants.
+- One mission may have many submissions.
+- One submission may have multiple evidence items.
+- One submission may have multiple review events.
+- An approved submission may create a contribution record.
+- A contribution record may create an XP transaction and a CP event.
+- One member may have many XP transactions.
+- One member may earn many achievements.
+- Leaderboard snapshots aggregate eligible CP events.
+- Events and Academy completions may generate contribution records under their own rules.
+
+## 6.3 Data integrity
+
+The backend must enforce:
+
+- Referential integrity.
+- Unique identifiers.
+- Valid status transitions.
+- Permission checks.
+- XP balance constraints.
+- Duplicate prevention.
+- Auditability.
+- Correct ownership.
+- Safe transaction handling.
+
+Mission approval and XP settlement must be reliable under retries and concurrent operations.
+
+---
+
+# 7. User journeys and critical workflows
+
+## 7.1 Visitor to Spartan
+
+1. Visitor opens the public Arena experience.
+2. Visitor explores the purpose, Houses and community.
+3. Visitor chooses to join.
+4. Account is created.
+5. Membership becomes Spartan.
+6. Onboarding mode begins.
+7. Member completes orientation and rules check.
+8. Member selects primary and secondary Houses.
+9. Member explores Academy and introductory missions.
+10. Member reaches the regular Spartan experience.
+
+## 7.2 Mission creator
+
+1. Member selects Create Mission.
+2. System checks permission.
+3. Member defines objective and instructions.
+4. Member selects participation format.
+5. Member defines evidence requirements.
+6. Member sets reward and budget, if applicable.
+7. System validates funding.
+8. XP is reserved.
+9. Mission is published.
+10. Participants join or apply.
+11. Submissions are reviewed.
+12. Approved work is settled.
+13. Mission is completed or closed.
+
+## 7.3 Mission participant
+
+1. Member discovers a mission.
+2. Member reviews requirements and reward.
+3. Member joins or applies.
+4. Member completes the work.
+5. Member submits evidence.
+6. Submission enters review.
+7. Reviewer approves, requests revision or rejects.
+8. Approved contribution is recorded.
+9. XP is transferred where applicable.
+10. CP and achievements are updated where eligible.
+11. Contribution appears in My Activity and relevant profile sections.
+
+## 7.4 Mission review
+
+1. Reviewer opens assigned submissions.
+2. System checks reviewer permission.
+3. Reviewer inspects evidence.
+4. Reviewer evaluates published criteria.
+5. Reviewer approves, requests revision or rejects.
+6. System records the decision and reason.
+7. Approved submissions become eligible for settlement.
+8. Disputes follow the defined process.
+
+## 7.5 Mission settlement
+
+1. Mission budget is reserved.
+2. Approved participant allocations are calculated.
+3. System validates remaining reserved funds.
+4. XP transfers are recorded.
+5. Recipients receive Spendable XP and Lifetime XP.
+6. Unused funds are refunded where applicable.
+7. Mission budget is marked settled.
+8. Audit history is retained.
+
+## 7.6 Member progression
+
+1. Member completes eligible activities.
+2. Activities are verified.
+3. Contribution records are created.
+4. XP is awarded.
+5. Lifetime XP increases.
+6. Spendable XP increases where the award is spendable.
+7. Numerical level is recalculated.
+8. Achievement criteria are evaluated.
+9. CP is awarded where eligible.
+10. Leaderboard standings are updated.
+
+## 7.7 Leadership appointment
+
+1. Member demonstrates relevant contribution and experience.
+2. Eligibility and readiness are reviewed.
+3. Appropriate authority evaluates the candidate.
+4. Appointment is explicitly approved.
+5. Ascendancy assignment is recorded.
+6. Required permissions are granted separately.
+7. Relevant workspace tools become available.
+8. Historical appointment and permission records are retained.
+
+---
+
+# 8. Screen and experience inventory
+
+This is the intended product inventory. It is not a statement that these screens already exist in the repository.
+
+| ID | Experience | Main purpose |
+|---|---|---|
+| SCR-001 | Public landing page | Introduce The Arena. |
+| SCR-002 | Registration and authentication | Join and access the platform. |
+| SCR-003 | Spartan onboarding | Guide new members. |
+| SCR-004 | Home | Shared member dashboard. |
+| SCR-005 | Mission discovery | Browse missions. |
+| SCR-006 | Mission detail | Review and participate. |
+| SCR-007 | Mission creation | Create and publish missions. |
+| SCR-008 | My Missions | Track created and joined missions. |
+| SCR-009 | Submission workspace | Submit and manage evidence. |
+| SCR-010 | Review Center | Review assigned submissions. |
+| SCR-011 | Houses directory | Discover Houses. |
+| SCR-012 | House experience | View House activity and content. |
+| SCR-013 | Explore | Discover people, projects, services and opportunities. |
+| SCR-014 | Academy | Access learning content. |
+| SCR-015 | Learning detail | Complete learning activities. |
+| SCR-016 | Events | Discover and register for events. |
+| SCR-017 | My Activity | Personal contribution history. |
+| SCR-018 | Progress & Recognition | XP, levels, achievements and rankings. |
+| SCR-019 | Leaderboards | View category and seasonal rankings. |
+| SCR-020 | My Profile | Personal identity and portfolio. |
+| SCR-021 | Account settings | Manage account and preferences. |
+| SCR-022 | Stewardship workspace | Elder and authorised oversight tools. |
+| SCR-023 | House management | Strategos and House manager tools. |
+| SCR-024 | Control Room | Administrative workspace. |
+| SCR-025 | Notifications | System updates. |
+| SCR-026 | Search | Global discovery. |
+| SCR-027 | Organisation profile | Organisation identity and activity. |
+
+Tabs, drawers, modals and internal states should not be incorrectly reported as separate application routes.
+
+The actual route structure must be established during the repository audit.
+
+---
+
+# 9. Security, privacy and governance requirements
+
+## 9.1 Authentication
+
+Inspect and document the actual authentication implementation.
+
+Do not assume local demo authentication is production authentication.
+
+Identify:
+
+- Account creation.
+- Session handling.
+- Sign-in.
+- Sign-out.
+- Recovery.
+- Session expiry.
+- Identity verification.
+- Connected accounts.
+
+## 9.2 Authorisation
+
+Protected operations must be authorised on the backend.
+
+Client-side navigation visibility is not a security boundary.
+
+Apply:
+
+- Least privilege.
+- Scoped permissions.
+- Ownership checks.
+- Role and permission validation.
+- Administrative audit trails.
+
+## 9.3 XP security
+
+XP transactions must be validated and processed authoritatively.
+
+Do not trust client-provided balances or payout values.
+
+Prevent duplicate transactions and race conditions.
+
+Maintain transaction history and correction records.
+
+## 9.4 Evidence and file security
+
+Validate file types, size and access.
+
+Protect private submissions.
+
+Do not expose private evidence through public profile routes unless the member has explicitly chosen to publish it.
+
+## 9.5 Privacy
+
+Provide controls for:
+
+- Public profile visibility.
+- Contribution visibility where appropriate.
+- Leaderboard participation.
+- Account preferences.
+- Connected accounts.
+- Notifications.
+
+Do not expose sensitive member information in public rankings.
+
+## 9.6 Mission integrity
+
+Support:
+
+- Mission reporting.
+- Evidence verification.
+- Duplicate detection.
+- Conflict-of-interest controls.
+- Reviewer accountability.
+- Dispute handling.
+- Audit logs.
+
+Platform-specific mission actions must be checked against the relevant platform rules before being enabled.
+
+---
+
+# 10. MVP scope and future capabilities
+
+## 10.1 MVP essentials
+
+The first release should deliver a coherent and working core:
+
+- Unified application shell.
+- Responsive collapsible left navigation.
+- Account and membership model.
+- Spartan onboarding.
+- Six Houses.
+- Primary and secondary House affiliation.
+- Ascendancy display.
+- Permission-based experiences.
+- Mission creation and discovery.
+- Individual and application-based participation.
+- Evidence submission.
+- Review and revision.
+- XP reservation and settlement.
+- Lifetime and Spendable XP.
+- XP transaction ledger.
+- Numerical levels.
+- Basic achievements.
+- Contribution records.
+- Basic Leaderboards.
+- Academy foundations.
+- Events.
+- Explore discovery.
+- My Activity.
+- My Profile.
+- Notifications.
+- Search.
+- Quick Create.
+- Stewardship and Control Room foundations.
+- Responsive desktop, tablet and mobile support.
+
+## 10.2 Important phased capabilities
+
+- Advanced team missions.
+- Member-created teams and smaller communities.
+- Advanced mentorship workflows.
+- Advanced analytics.
+- Advanced AI-assisted evidence review.
+- Seasonal competitions.
+- Expanded reward catalogue.
+- Advanced organisation workspaces.
+- More sophisticated mission automation.
+
+## 10.3 Explicitly excluded from the current release
+
+- Messaging.
+- Publicly tradable XP.
+- Cash redemption.
+- Guaranteed monetary value for XP.
+- Token issuance or tokenisation.
+- Liquidity or investment mechanisms.
+- Unrestricted mission engagement farming.
+- Automatic leadership appointments based only on XP.
+
+---
+
+# 11. Non-functional and responsive requirements
+
+## 11.1 Responsive design
+
+Desktop, tablet and mobile are first-release requirements.
+
+All major journeys must work at different viewport sizes.
+
+The navigation hierarchy must remain consistent.
+
+## 11.2 Performance
+
+Prioritise:
+
+- Efficient loading.
+- Appropriate asset sizes.
+- Avoiding unnecessary rerenders.
+- Paginated or progressively loaded long lists.
+- Efficient search and filtering.
+- Appropriate caching.
+
+Do not introduce unnecessary complexity without measurable benefit.
+
+## 11.3 Accessibility
+
+Provide:
+
+- Keyboard-accessible navigation.
+- Clear focus states.
+- Appropriate contrast.
+- Semantic controls.
+- Accessible labels.
+- Useful error messages.
+- Touch-friendly controls.
+
+## 11.4 Reliability
+
+Critical operations include:
+
+- Authentication.
+- Mission publication.
+- Submission creation.
+- Review decisions.
+- XP reservation.
+- XP settlement.
+- Refunds.
+- Permission changes.
+
+These must handle retries, network interruptions and duplicate requests safely.
+
+## 11.5 Maintainability
+
+Prefer clear module boundaries, documented data contracts, reusable components where justified and maintainable business logic.
+
+Do not rewrite the existing application merely to adopt a preferred architecture if the current technology can support the product reliably.
+
+---
+
+# 12. Acceptance criteria
+
+Every MVP requirement must be tested against observable behaviour.
+
+## 12.1 Account and membership
+
+- A new individual can create one Arena account.
+- Joining creates Spartan membership.
+- Newbie is represented as onboarding state, not an account role.
+- A member can select primary and secondary Houses.
+- House affiliation does not automatically grant permissions.
+- Leadership appointments are recorded separately from numerical level.
+
+## 12.2 Navigation
+
+- The same navigation destinations are available across supported devices.
+- The left navigation can collapse and expand.
+- On mobile it opens as a left-side drawer.
+- No separate mobile bottom-navigation hierarchy is introduced.
+- Search, notifications, Quick Create and account controls are accessible.
+- Messaging is not presented as an available feature.
+
+## 12.3 Missions
+
+- An eligible member can create a mission.
+- A creator without sufficient Spendable XP cannot publish a funded mission.
+- Non-rewarded missions can be created where permitted.
+- A participant can discover and join an eligible mission.
+- A participant can submit required evidence.
+- A reviewer can approve, reject or request revision.
+- A member cannot approve their own submission.
+- Approved submissions create contribution records.
+- Mission budgets settle correctly.
+- Unused funds are refunded according to the published rules.
+- Disputes retain their history.
+
+## 12.4 XP
+
+- Lifetime XP and Spendable XP are separate.
+- Spending XP does not reduce Lifetime XP.
+- Mission funding reserves Spendable XP.
+- Approved payouts create auditable transfers.
+- Refunds restore available Spendable XP.
+- Duplicate payouts are prevented.
+- Balances cannot become negative.
+- Numerical levels use Lifetime XP thresholds.
+- XP thresholds are configurable.
+
+## 12.5 Recognition and Leaderboards
+
+- Achievements unlock only when criteria are satisfied.
+- Achievements do not silently create duplicate XP awards.
+- CP is separate from XP.
+- CP cannot be spent or transferred.
+- CP is awarded only for eligible verified contributions.
+- Duplicate contribution scoring is prevented.
+- Leaderboards use CP rather than Spendable XP.
+- Seasonal and all-time records are distinguishable.
+- House rankings respect House attribution.
+- Privacy controls are respected.
+
+## 12.6 Permissions
+
+- Restricted tools are hidden from unauthorised members.
+- Direct requests to protected operations are still rejected without permission.
+- House managers are scoped to their assigned House.
+- Reviewers cannot review their own submissions.
+- Administrative actions are auditable.
+
+## 12.7 Responsive behaviour
+
+- Primary journeys work on desktop, tablet and mobile.
+- The left navigation remains usable.
+- Forms and uploads adapt to narrow screens.
+- Mission details remain readable.
+- No horizontal overflow is present.
+- No important feature requires hover.
+
+---
+
+# 13. Technical audit requirements
+
+This specification must be compared against the actual repository before implementation.
+
+The audit must establish:
+
+1. Repository structure.
+2. Actual framework and language.
+3. Dependency and package health.
+4. Build and development scripts.
+5. Application entry points.
+6. Routes and navigation.
+7. Components and page composition.
+8. Styling and design system.
+9. Responsive implementation.
+10. Authentication.
+11. State management.
+12. Data storage.
+13. Database and APIs.
+14. Mission functionality.
+15. XP and progression functionality.
+16. Leaderboards and achievements.
+17. Permission enforcement.
+18. File and evidence storage.
+19. Notifications and search.
+20. Tests.
+21. Deployment configuration.
+22. Environment variables and secrets handling.
+
+The audit must distinguish:
+
+- Actual working functionality.
+- Partially working functionality.
+- UI-only mock functionality.
+- Local browser storage.
+- Backend-connected functionality.
+- Unimplemented functionality.
+
+A visual element must not be reported as operational simply because it appears on a screen.
+
+## 13.1 Repository disposition categories
+
+Every major existing feature or module must be classified:
+
+| Decision | Meaning |
+|---|---|
+| KEEP | Fits the agreed product and can remain. |
+| ADAPT | Useful but requires modification. |
+| BUILD | Required but missing. |
+| REPLACE | Conflicts with the product or has unacceptable technical limitations. |
+| REMOVE | Redundant or obsolete. |
+| INVESTIGATE | Insufficient evidence to decide. |
+
+## 13.2 Audit outputs
+
+The repository audit must produce:
+
+- Repository inventory.
+- Verified technology stack.
+- Build and test status.
+- Route and screen map.
+- Component inventory.
+- Existing data model.
+- Existing authentication and permission assessment.
+- Existing backend and integration assessment.
+- Feature coverage matrix.
+- Responsive assessment.
+- Security and data-integrity findings.
+- Risks and blockers.
+- KEEP / ADAPT / BUILD / REPLACE / REMOVE decisions.
+
+No major implementation or destructive restructuring should occur during this audit.
+
+---
+
+# 14. Implementation planning requirements
+
+After the audit, prepare a migration and implementation plan.
+
+The plan must:
+
+- Map every MVP requirement to an existing or planned module.
+- Preserve useful existing functionality.
+- Identify the smallest safe architectural changes.
+- Identify database and API changes.
+- Map roles and permissions.
+- Define migration dependencies.
+- Identify data migration requirements.
+- Define implementation milestones.
+- Define acceptance tests.
+- Define rollback and recovery considerations.
+- Identify unresolved technical blockers.
+
+The implementation plan must be based on verified repository facts, not guessed architecture.
+
+---
+
+# 15. Gemini 4 Hydrogen audit-prompt preparation
+
+This specification is intended to be supplied as source material for a detailed prompt in Google AI Studio.
+
+The eventual prompt must instruct Gemini 4 Hydrogen to behave as a product-aware repository auditor and technical architect.
+
+It must not simply tell the model to rebuild The Arena.
+
+The prompt should establish:
+
+**Role**
+
+Act as a senior product engineer, technical architect and repository auditor.
+
+**Context**
+
+The Arena has an agreed product specification. The existing repository is an implementation to inspect, not an authority over product requirements.
+
+**Primary task**
+
+Audit the existing codebase against this master specification.
+
+**Mandatory first phase**
+
+Read the specification and inspect the complete repository before proposing changes.
+
+**Restrictions**
+
+- Do not modify files during the initial audit.
+- Do not rewrite the application.
+- Do not invent missing backend services.
+- Do not assume that mock UI is working functionality.
+- Do not assume a database exists without verifying it.
+- Do not assume that role-based UI is secure without checking server-side enforcement.
+- Do not replace existing technology without evidence.
+- Do not introduce unapproved features.
+- Do not invent product rules to fill specification gaps.
+
+**Required outputs**
+
+- Verified repository inventory.
+- Current architecture.
+- Feature coverage matrix.
+- Data and permission assessment.
+- Responsive assessment.
+- Existing functionality classification.
+- Technical risks.
+- KEEP / ADAPT / BUILD / REPLACE / REMOVE decisions.
+- Recommended migration architecture.
+- Implementation dependencies.
+- Unresolved questions.
+
+The prompt must require Gemini to cite actual file paths, component names, route definitions and relevant code evidence in its findings.
+
+It must clearly distinguish what it inspected from what it inferred.
+
+The audit should finish with a proposed implementation plan and wait for authorisation before destructive or broad changes.
+
+---
+
+# 16. Specification consistency and unresolved configuration
+
+The following initial configurations are included in this version:
+
+- 30 numerical levels.
+- Cumulative Lifetime XP thresholds.
+- Initial XP values per recognised activity.
+- Mission reward guidance bands.
+- Contribution Points separate from XP.
+- Five Leaderboard categories.
+- 90-day seasons and all-time historical records.
+- Initial seasonal CP limits for selected recurring activities.
+- Nineteen initial achievements.
+- Mission and submission lifecycles.
+- Shared responsive navigation.
+- Unified account and permission architecture.
+
+These values should be configurable.
+
+The following operational details still require technical or governance validation during implementation planning:
+
+- Who has final authority to appoint each Ascendancy rank.
+- Exact reviewer appointment and replacement rules.
+- Whether every mission category requires pre-publication moderation.
+- Final evidence-retention periods.
+- Exact notification preferences and delivery channels.
+- Final Academy content and learning-path catalogue.
+- Final database and API architecture.
+- Production authentication and storage provider.
+- Final organisation verification process.
+- Detailed team reward allocation rules.
+- Final administrative permission matrix.
+
+These are not reasons to delay the repository audit. They must be recorded and handled at the appropriate design or technical stage.
+
+---
+
+# 17. Final product definition
+
+The Arena is one unified community and contribution ecosystem.
+
+Visitors become Spartans.
+
+Spartans discover and develop through Houses, Academy, missions and events.
+
+Members contribute work and submit proof.
+
+Approved contributions create records, recognition and XP.
+
+XP supports both progression and internal exchange.
+
+Numerical levels represent accumulated Lifetime XP.
+
+Ascendancy represents recognised leadership and responsibility.
+
+Permissions govern what members can actually do.
+
+Leaderboards recognise verified contributions.
+
+Organisations can participate as sponsors and project identities.
+
+The shared application shell connects the entire experience across desktop, tablet and mobile.
+
+The platform should help members learn, discover, build, contribute and grow — while giving The Arena the systems needed to recognise meaningful work and coordinate a growing community.
+
+**This specification is the product baseline against which the existing repository must now be audited.**

@@ -1,11 +1,23 @@
-import { ArrowRight } from 'lucide-react'
-import IconForPage from './IconForPage'
+import { ArrowRight, Compass } from 'lucide-react'
 
-export default function EmptyState({ name, onClear }: { name: string; onClear: () => void }) {
-  return <div className="empty-state">
-    <span><IconForPage name={name} size={22} /></span>
-    <h3>Nothing here just yet</h3>
-    <p>Try another search — the right opportunity is out there.</p>
-    <button className="button button-quiet" onClick={onClear}>Clear search <ArrowRight size={14} /></button>
-  </div>
+export default function EmptyState({
+  name,
+  onClear,
+  actionLabel = 'Reset / Continue',
+}: {
+  name: string
+  onClear: () => void
+  actionLabel?: string
+}) {
+  return (
+    <div className="empty-state">
+      <span><Compass size={22} strokeWidth={1.8} /></span>
+      <h3>Nothing matching {name}</h3>
+      <p>Adjust your filters or sign in to view personalised queues.</p>
+      <button type="button" className="button button-quiet" onClick={onClear}>
+        {actionLabel} <ArrowRight size={14} />
+      </button>
+    </div>
+  )
 }
+

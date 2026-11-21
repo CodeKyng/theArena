@@ -2,9 +2,18 @@ import { Link } from 'react-router-dom'
 import Brand from '../Brand'
 
 export default function LandingFooter() {
-  return <footer className="landing-footer">
-    <Brand /><span>A better internet is a team effort.</span>
-    <div><Link to="/resources">About</Link><Link to="/discussions">Community</Link><a href="mailto:hello@thearena.xyz">Contact</a></div>
-    <small>© 2025 The Arena</small>
-  </footer>
+  return (
+    <footer className="landing-footer">
+      <Brand />
+      <span>The Arena — A Community for Becoming.</span>
+      <div>
+        <Link to="/houses">Houses</Link>
+        <Link to="/academy">Academy</Link>
+        <Link to="/missions">Missions</Link>
+        <Link to="/events">Events</Link>
+        <Link to="/explore">Explore</Link>
+      </div>
+      <small>Frontend Prototype · Local Simulation</small>
+    </footer>
+  )
 }

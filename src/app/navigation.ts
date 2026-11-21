@@ -1,29 +1,93 @@
-export const PUBLIC_PAGES = [
-  'Discover', 'Opportunities', 'Communities', 'Projects', 'Services', 'Events', 'Learning Hub',
-  'Grants', 'Hackathons', 'Bounties', 'Organizations', 'Resources', 'Discussions', 'Leaderboard',
-]
+import type { HouseId, PermissionGrant } from '../domain/types'
+import { memberHasPermission } from '../domain/progression'
 
-export const MEMBER_PAGES = [
-  'Dashboard', 'Profile', 'Edit Profile', 'My Projects', 'My Services', 'My Applications',
-  'Saved Items', 'Messages', 'Notifications', 'Achievements', 'Reputation', 'Settings',
-]
-
-export const ORG_PAGES = ['Org Dashboard', 'Create Opportunity', 'Manage Applicants', 'Analytics']
-export const ADMIN_PAGES = ['Admin Dashboard', 'Users', 'Content Moderation', 'Analytics']
-export const AUTH_PATHS = ['/login', '/register', '/forgot-password', '/onboarding']
-
-export const slug = (name: string) => `/${name.toLowerCase().replaceAll(' ', '-').replaceAll('&', 'and')}`
-
-export function pagePath(name: string, scope?: 'organization' | 'admin') {
-  if (scope === 'organization') return `/organization${slug(name)}`
-  if (scope === 'admin') return `/admin${slug(name)}`
-  if (ORG_PAGES.includes(name)) return `/organization${slug(name)}`
-  if (ADMIN_PAGES.includes(name)) return `/admin${slug(name)}`
-  return slug(name)
+export interface NavItem {
+  id: string
+  path: string
+  label: string
+  icon:
+    | 'home'
+    | 'missions'
+    | 'houses'
+    | 'explore'
+    | 'academy'
+    | 'events'
+    | 'activity'
+    | 'profile'
+    | 'stewardship'
+    | 'control-room'
+    | 'leaderboards'
+  badge?: number
 }
 
-export function titleForPath(path: string) {
-  if (path === '/') return 'Home'
-  return path.split('/').filter(Boolean).at(-1)?.split('-')
-    .map((part) => part[0]?.toUpperCase() + part.slice(1)).join(' ') ?? 'Discover'
+export const PRIMARY_NAV_ITEMS: NavItem[] = [
+  { id: 'home', path: '/home', label: 'Home', icon: 'home' },
+  { id: 'missions', path: '/missions', label: 'Missions', icon: 'missions' },
+  { id: 'houses', path: '/houses', label: 'Houses', icon: 'houses' },
+  { id: 'explore', path: '/explore', label: 'Explore', icon: 'explore' },
+  { id: 'academy', path: '/academy', label: 'Academy', icon: 'academy' },
+  { id: 'events', path: '/events', label: 'Events', icon: 'events' },
+  { id: 'leaderboards', path: '/leaderboards', label: 'Leaderboards', icon: 'leaderboards' },
+]
+
+export const PERSONAL_NAV_ITEMS: NavItem[] = [
+  { id: 'activity', path: '/activity', label: 'My Activity', icon: 'activity' },
+  { id: 'profile', path: '/profile', label: 'My Profile', icon: 'profile' },
+]
+
+export function getGovernanceNavItems(
+  memberId: string | null,
+  grants: PermissionGrant[],
+): NavItem[] {
+  if (!memberId) return []
+  const items: NavItem[] = []
+
+  const canSteward =
+    memberHasPermission(memberId, grants, 'mentor.manage') ||
+    memberHasPermission(memberId, grants, 'moderator') ||
+    memberHasPermission(memberId, grants, 'house.manage') ||
+    memberHasPermission(memberId, grants, 'platform.admin')
+
+  const canControlRoom =
+    memberHasPermission(memberId, grants, 'platform.admin') ||
+    memberHasPermission(memberId, grants, 'finance.admin')
+
+  if (canSteward) {
+    items.push({ id: 'stewardship', path: '/stewardship', label: 'Stewardship', icon: 'stewardship' })
+  }
+  if (canControlRoom) {
+    items.push({ id: 'control-room', path: '/control-room', label: 'Control Room', icon: 'control-room' })
+  }
+  return items
 }
+
+export function resolveBreadcrumb(pathname: string, houseLookup?: (slug: string) => HouseId | undefined): { group: string; page: string } {
+  if (pathname.startsWith('/home')) return { group: 'Arena', page: 'Home' }
+  if (pathname.startsWith('/missions/new')) return { group: 'Missions', page: 'Create Mission' }
+  if (pathname.startsWith('/missions/')) return { group: 'Missions', page: 'Mission Detail' }
+  if (pathname.startsWith('/missions')) return { group: 'Arena', page: 'Missions' }
+  if (pathname.startsWith('/houses/')) {
+    const slug = pathname.replace('/houses/', '').split('/')[0]
+    const matched = houseLookup?.(slug)
+    return { group: 'Houses', page: matched ? slug.replace('-', ' ').replace(/\b\w/g, (c) => c.toUpperCase()) : 'House Workspace' }
+  }
+  if (pathname.startsWith('/houses')) return { group: 'Arena', page: 'Houses' }
+  if (pathname.startsWith('/explore')) return { group: 'Arena', page: 'Explore' }
+  if (pathname.startsWith('/academy')) return { group: 'Arena', page: 'Academy' }
+  if (pathname.startsWith('/events')) return { group: 'Arena', page: 'Events' }
+  if (pathname.startsWith('/leaderboards')) return { group: 'Arena', page: 'Leaderboards' }
+  if (pathname.startsWith('/activity')) return { group: 'Personal', page: 'My Activity' }
+  if (pathname.startsWith('/profile')) return { group: 'Personal', page: 'My Profile' }
+  if (pathname.startsWith('/organisations')) return { group: 'Personal', page: 'Organisations' }
+  if (pathname.startsWith('/stewardship')) return { group: 'Governance', page: 'Stewardship' }
+  if (pathname.startsWith('/control-room')) return { group: 'Governance', page: 'Control Room' }
+  return { group: 'Arena', page: 'Workspace' }
+}
+
+export const LANDING_LINKS = [
+  { label: 'Houses', to: '/houses' },
+  { label: 'Missions', to: '/missions' },
+  { label: 'Explore', to: '/explore' },
+  { label: 'Academy', to: '/academy' },
+  { label: 'Events', to: '/events' },
+]
