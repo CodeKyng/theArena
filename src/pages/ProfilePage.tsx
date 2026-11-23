@@ -4,7 +4,7 @@ import { Award, Building2, Flame, Sliders, Sparkles } from 'lucide-react'
 import { useArena } from '../app/arenaContext'
 import PageScaffold from '../components/PageScaffold'
 import PermissionGate from '../components/PermissionGate'
-import { formatVerificationStatus, getHouseName } from '../domain/constants'
+import { FEATURE_FLAGS, formatVerificationStatus, getHouseName } from '../domain/constants'
 import type { HouseId } from '../domain/types'
 
 type ProfileTab = 'identity' | 'membership' | 'portfolio' | 'recognition'
@@ -104,7 +104,7 @@ export default function ProfilePage() {
                 {(
                   [
                     ['identity', 'Public Identity'],
-                    ['membership', 'Houses & Organisations'],
+                    ['membership', FEATURE_FLAGS.organisationsEnabled ? 'Houses & Organisations' : 'Houses'],
                     ['portfolio', `Proof-of-Work Portfolio (${myApprovedSubs.length + myProjects.length})`],
                     ['recognition', `Recognition (${myAchievements.length})`],
                   ] as const
@@ -154,7 +154,7 @@ export default function ProfilePage() {
               )}
 
               {tab === 'membership' && (
-                <div className="dashboard-columns">
+                <div className={FEATURE_FLAGS.organisationsEnabled ? 'dashboard-columns' : undefined}>
                   <section className="dashboard-panel">
                     <div className="panel-title">
                       <h2><Flame size={16} style={{ verticalAlign: 'middle' }} /> House Alignment</h2>
@@ -211,30 +211,32 @@ export default function ProfilePage() {
                     </div>
                   </section>
 
-                  <section className="dashboard-panel">
-                    <div className="panel-title">
-                      <h2><Building2 size={16} style={{ verticalAlign: 'middle' }} /> Linked Organisations</h2>
-                    </div>
-                    <p style={{ fontSize: 13, color: 'var(--arena-muted)', marginTop: 0 }}>
-                      Organisations remain separate profiles from your personal XP, Level, and Ascendancy rank.
-                    </p>
-                    {memberOrganisations.length === 0 ? (
-                      <Link className="button button-quiet button-small" to="/organisations">Create Organisation Profile</Link>
-                    ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        {memberOrganisations.map((org) => (
-                          <div key={org.id} style={{ padding: 10, border: '1px solid var(--arena-line)', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div>
-                              <b>{org.name}</b>
-                              <div style={{ fontSize: 12, color: 'var(--arena-muted)' }}>{org.kind} · {org.ecosystem}</div>
-                            </div>
-                            <span className="listing-kind">{formatVerificationStatus(org.verificationStatus)}</span>
-                          </div>
-                        ))}
-                        <Link className="text-link" to="/organisations">Manage Organisations →</Link>
+                  {FEATURE_FLAGS.organisationsEnabled && (
+                    <section className="dashboard-panel">
+                      <div className="panel-title">
+                        <h2><Building2 size={16} style={{ verticalAlign: 'middle' }} /> Linked Organisations</h2>
                       </div>
-                    )}
-                  </section>
+                      <p style={{ fontSize: 13, color: 'var(--arena-muted)', marginTop: 0 }}>
+                        Organisations remain separate profiles from your personal XP, Level, and Ascendancy rank.
+                      </p>
+                      {memberOrganisations.length === 0 ? (
+                        <Link className="button button-quiet button-small" to="/organisations">Create Organisation Profile</Link>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          {memberOrganisations.map((org) => (
+                            <div key={org.id} style={{ padding: 10, border: '1px solid var(--arena-line)', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <div>
+                                <b>{org.name}</b>
+                                <div style={{ fontSize: 12, color: 'var(--arena-muted)' }}>{org.kind} · {org.ecosystem}</div>
+                              </div>
+                              <span className="listing-kind">{formatVerificationStatus(org.verificationStatus)}</span>
+                            </div>
+                          ))}
+                          <Link className="text-link" to="/organisations">Manage Organisations →</Link>
+                        </div>
+                      )}
+                    </section>
+                  )}
                 </div>
               )}
 

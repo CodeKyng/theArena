@@ -1,8 +1,9 @@
 import { useState, type FormEvent } from 'react'
+import { Navigate } from 'react-router-dom'
 import { Building2, CheckCircle2, Info, Plus, ShieldCheck } from 'lucide-react'
 import { useArena } from '../app/arenaContext'
 import PermissionGate from '../components/PermissionGate'
-import { formatVerificationStatus } from '../domain/constants'
+import { FEATURE_FLAGS, formatVerificationStatus } from '../domain/constants'
 import type { OrganisationProfile } from '../domain/types'
 
 export default function OrganisationsPage() {
@@ -21,6 +22,10 @@ export default function OrganisationsPage() {
   const [tagline, setTagline] = useState('')
   const [description, setDescription] = useState('')
   const [website, setWebsite] = useState('')
+
+  if (!FEATURE_FLAGS.organisationsEnabled) {
+    return <Navigate to="/dashboard" replace />
+  }
 
   const handleCreate = (e: FormEvent) => {
     e.preventDefault()

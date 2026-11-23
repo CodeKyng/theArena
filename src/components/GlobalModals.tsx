@@ -15,7 +15,7 @@ import {
   X,
 } from 'lucide-react'
 import { useArena } from '../app/arenaContext'
-import { DISCUSSION_UNLOCK_LEVEL } from '../domain/constants'
+import { DISCUSSION_UNLOCK_LEVEL, FEATURE_FLAGS } from '../domain/constants'
 import type { EventKind, ExploreOpportunity, ExploreProject, ExploreResource, HouseId } from '../domain/types'
 
 export default function GlobalModals() {
@@ -525,7 +525,9 @@ export default function GlobalModals() {
                     : quickCreateKind === 'service'
                       ? 'Service Category Label'
                       : quickCreateKind === 'opportunity'
-                        ? 'Organisation / Team Name'
+                        ? FEATURE_FLAGS.organisationsEnabled
+                          ? 'Organisation / Team Name'
+                          : 'Team / Partner Name'
                         : quickCreateKind === 'discussion'
                           ? 'Topic Tag'
                           : quickCreateKind === 'event'

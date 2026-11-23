@@ -30,7 +30,7 @@ import {
 } from '../app/navigation'
 import AccountMenu from './AccountMenu'
 import Brand from './Brand'
-import { formatVerificationStatus } from '../domain/constants'
+import { FEATURE_FLAGS, formatVerificationStatus } from '../domain/constants'
 
 function renderNavIcon(icon: NavItem['icon']) {
   switch (icon) {
@@ -157,46 +157,58 @@ export default function Sidebar({
           </div>
         </div>
 
-        <button
-          type="button"
-          className="workspace-switch"
-          onClick={() => {
-            if (!currentMember) {
-              navigate('/login')
-              onClose()
-              return
-            }
-            setOrgMenuOpen((prev) => !prev)
-          }}
-          aria-expanded={orgMenuOpen}
-        >
-          <span className="workspace-avatar">
-            {activeOrganisation
-              ? activeOrganisation.name.slice(0, 1).toUpperCase()
-              : currentMember
-                ? currentMember.avatarInitials
-                : 'A'}
-          </span>
-          <span className="workspace-copy">
-            <b>
-              {activeOrganisation
-                ? activeOrganisation.name
+        {FEATURE_FLAGS.organisationsEnabled || !currentMember ? (
+          <button
+            type="button"
+            className="workspace-switch"
+            onClick={() => {
+              if (!currentMember) {
+                navigate('/login')
+                onClose()
+                return
+              }
+              setOrgMenuOpen((prev) => !prev)
+            }}
+            aria-expanded={currentMember ? orgMenuOpen : undefined}
+          >
+            <span className="workspace-avatar">
+              {FEATURE_FLAGS.organisationsEnabled && activeOrganisation
+                ? activeOrganisation.name.slice(0, 1).toUpperCase()
                 : currentMember
-                  ? currentMember.displayName
-                  : 'Explore as guest'}
-            </b>
-            <small>
-              {activeOrganisation
-                ? `${formatVerificationStatus(activeOrganisation.verificationStatus)} organisation`
-                : currentMember
-                  ? `${currentMember.ascendancyRank} · ${activeHouseName}`
-                  : 'Visitor view'}
-            </small>
-          </span>
-          <ChevronDown size={14} className="workspace-switch-chevron" />
-        </button>
+                  ? currentMember.avatarInitials
+                  : 'A'}
+            </span>
+            <span className="workspace-copy">
+              <b>
+                {FEATURE_FLAGS.organisationsEnabled && activeOrganisation
+                  ? activeOrganisation.name
+                  : currentMember
+                    ? currentMember.displayName
+                    : 'Explore as guest'}
+              </b>
+              <small>
+                {FEATURE_FLAGS.organisationsEnabled && activeOrganisation
+                  ? `${formatVerificationStatus(activeOrganisation.verificationStatus)} organisation`
+                  : currentMember
+                    ? `${currentMember.ascendancyRank} · ${activeHouseName}`
+                    : 'Visitor view'}
+              </small>
+            </span>
+            <ChevronDown size={14} className="workspace-switch-chevron" />
+          </button>
+        ) : (
+          <div className="workspace-switch">
+            <span className="workspace-avatar">{currentMember.avatarInitials}</span>
+            <span className="workspace-copy">
+              <b>{currentMember.displayName}</b>
+              <small>
+                {currentMember.ascendancyRank} · {activeHouseName}
+              </small>
+            </span>
+          </div>
+        )}
 
-        {orgMenuOpen && currentMember && !collapsed && (
+        {FEATURE_FLAGS.organisationsEnabled && orgMenuOpen && currentMember && !collapsed && (
           <div className="org-switch-menu">
             <button
               type="button"
@@ -274,17 +286,21 @@ export default function Sidebar({
               ))}
             </nav>
 
-            <label className="side-label side-label-spaced">ORGANISATIONS</label>
-            <nav className="side-nav" aria-label="Organisations navigation">
-              <NavLink
-                to="/organisations"
-                onClick={onClose}
-                className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
-              >
-                <Building2 size={16} />
-                <span className="sidebar-link-label">Organisations</span>
-              </NavLink>
-            </nav>
+            {FEATURE_FLAGS.organisationsEnabled && (
+              <>
+                <label className="side-label side-label-spaced">ORGANISATIONS</label>
+                <nav className="side-nav" aria-label="Organisations navigation">
+                  <NavLink
+                    to="/organisations"
+                    onClick={onClose}
+                    className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
+                  >
+                    <Building2 size={16} />
+                    <span className="sidebar-link-label">Organisations</span>
+                  </NavLink>
+                </nav>
+              </>
+            )}
           </>
         )}
 

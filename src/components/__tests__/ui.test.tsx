@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import App from '../../App'
+import { ArenaProvider } from '../../app/ArenaProvider'
+import OrganisationsPage from '../../pages/OrganisationsPage'
 import { ARENA_STORAGE_KEY, loadSidebarCollapsed, resetArenaStorage } from '../../services/arenaStore'
 
 function renderApp(initialRoute: string) {
@@ -488,21 +490,24 @@ describe('The Arena Frontend Auth, Access Control & UI Tests', () => {
     expect(elenaDiscBtn.disabled).toBe(false)
   })
 
-  it('Stage 3: separates Personal and Organisations navigation, fixes /organisations breadcrumb, cleans Search tooltip, and removes duplicate mobile/expanded Topbar search', () => {
+  it('Stage 3 + V1 Deactivation: renders Personal navigation without Organisations nav, redirects /organisations to /dashboard, cleans Search tooltip, and removes duplicate Topbar search', () => {
     renderAuthenticatedAt('/organisations', /Jordan Davis/i)
 
-    // Personal navigation contains ONLY My Activity and My Profile (not Organisations)
+    // Authenticated Spartan visiting /organisations redirects cleanly to /dashboard
+    expect(screen.getByRole('heading', { name: /^Dashboard\.?$/i })).toBeTruthy()
+    expect(screen.queryByRole('heading', { name: /Create Organisation Profile/i })).toBeNull()
+
+    // Personal navigation contains ONLY My Activity and My Profile
     const personalNav = screen.getByRole('navigation', { name: /Personal navigation/i })
     const personalLinks = within(personalNav).getAllByRole('link').map((l) => l.textContent?.trim())
     expect(personalLinks).toEqual(['My Activity', 'My Profile'])
 
-    // Organisations lives in its own navigation group
-    const orgNav = screen.getByRole('navigation', { name: /Organisations navigation/i })
-    expect(within(orgNav).getByRole('link', { name: /Organisations/i })).toBeTruthy()
+    // Organisations navigation and workspace org switcher are completely deactivated in V1
+    expect(screen.queryByRole('navigation', { name: /Organisations navigation/i })).toBeNull()
+    expect(screen.queryByRole('link', { name: /^Organisations$/i })).toBeNull()
 
-    // /organisations breadcrumb does not route through Personal or /activity
+    // /dashboard breadcrumb resolves to Arena -> Dashboard
     const breadcrumb = screen.getByRole('navigation', { name: /Breadcrumb/i })
-    expect(within(breadcrumb).queryByText('Personal')).toBeNull()
     expect(within(breadcrumb).getByRole('link', { name: 'Arena' }).getAttribute('href')).toBe('/dashboard')
 
     // Sidebar Search tooltip is exact "Search" (no "(⌘K)") and expanded Topbar has NO duplicate Search button
@@ -603,7 +608,7 @@ describe('The Arena Frontend Auth, Access Control & UI Tests', () => {
   it('Stage 3: clears Primary & Secondary House to None and persists across reloads and persona switches', () => {
     // 1. ProfilePage: clear Secondary House then Primary House -> persists after remount (reload)
     renderAuthenticatedAt('/profile', /Jordan Davis/i)
-    fireEvent.click(screen.getByRole('tab', { name: /Houses & Organisations/i }))
+    fireEvent.click(screen.getByRole('tab', { name: /^Houses$/i }))
 
     const primarySelect = screen.getByLabelText(/^Primary House$/i) as HTMLSelectElement
     const secondarySelect = screen.getByLabelText(/^Secondary House$/i) as HTMLSelectElement
@@ -618,13 +623,13 @@ describe('The Arena Frontend Auth, Access Control & UI Tests', () => {
     // Remount from persisted localStorage (without clearing storage)
     cleanup()
     renderApp('/profile')
-    fireEvent.click(screen.getByRole('tab', { name: /Houses & Organisations/i }))
+    fireEvent.click(screen.getByRole('tab', { name: /^Houses$/i }))
     expect((screen.getByLabelText(/^Primary House$/i) as HTMLSelectElement).value).toBe('')
     expect((screen.getByLabelText(/^Secondary House$/i) as HTMLSelectElement).value).toBe('')
 
     // 2. Switching Demo Persona preserves Maya's own seeded Houses while leaving Jordan cleared
     fireEvent.change(screen.getByLabelText(/Switch Demo Persona/i), { target: { value: 'mem-maya' } })
-    fireEvent.click(screen.getByRole('tab', { name: /Houses & Organisations/i }))
+    fireEvent.click(screen.getByRole('tab', { name: /^Houses$/i }))
     expect((screen.getByLabelText(/^Primary House$/i) as HTMLSelectElement).value).toBe('forge-masters')
     expect((screen.getByLabelText(/^Secondary House$/i) as HTMLSelectElement).value).toBe('artisans')
 
@@ -663,4 +668,90 @@ describe('The Arena Frontend Auth, Access Control & UI Tests', () => {
     expect(screen.getByRole('link', { name: /Open Academy/i })).toBeTruthy()
     expect(screen.getByRole('link', { name: /View Intro Mission/i })).toBeTruthy()
   })
+
+  it('V1 Organisation Deactivation: redirects all org routes, removes workspace switcher & shared org UI, ignores stale activeOrganisationId, and keeps core Spartan flows working', () => {
+    // 1. Unauthenticated access to /organisations and /organizations still redirects to /login first
+    for (const orgRoute of ['/organisations', '/organisations/org-helix', '/organizations', '/organizations/anything']) {
+      cleanup()
+      renderApp(orgRoute)
+      expect(screen.getByRole('heading', { name: /Welcome back\./i })).toBeTruthy()
+    }
+
+    // 2. Seed stale activeOrganisationId into localStorage for Jordan -> must sanitize & never show org workspace UI
+    cleanup()
+    const raw = window.localStorage.getItem(ARENA_STORAGE_KEY)
+    expect(raw).toBeTruthy()
+    const parsed = JSON.parse(raw!)
+    window.localStorage.setItem(
+      ARENA_STORAGE_KEY,
+      JSON.stringify({ ...parsed, currentMemberId: 'mem-jordan', activeOrganisationId: 'org-helix' }),
+    )
+
+    // 3. Authenticated access to /organisations*, /organizations* redirects cleanly to /dashboard with no org switcher
+    for (const orgRoute of ['/organisations', '/organisations/org-helix', '/organizations', '/organizations/anything']) {
+      cleanup()
+      renderApp(orgRoute)
+      expect(screen.getByRole('heading', { name: /^Dashboard\.?$/i })).toBeTruthy()
+      const sidebar = screen.getByLabelText(/Primary Arena navigation/i)
+      expect(within(sidebar).queryByText(/ORGANISATIONS/i)).toBeNull()
+      expect(within(sidebar).queryByText(/Helix Protocol Labs/i)).toBeNull()
+      expect(within(sidebar).queryByText(/Personal account/i)).toBeNull()
+      expect(within(sidebar).queryByText(/Manage Organisations/i)).toBeNull()
+      // Member identity block remains visible in personal context
+      expect(within(sidebar).getAllByText('Jordan Davis').length).toBeGreaterThanOrEqual(1)
+      expect(within(sidebar).getByText(/Gladiator · Forge Masters/i)).toBeTruthy()
+    }
+
+    // 4. Direct mounting of OrganisationsPage component also guards and returns null/redirect instead of org UI
+    cleanup()
+    render(
+      <MemoryRouter initialEntries={['/organisations']}>
+        <ArenaProvider>
+          <OrganisationsPage />
+        </ArenaProvider>
+      </MemoryRouter>,
+    )
+    expect(screen.queryByRole('heading', { name: /Create Organisation Profile/i })).toBeNull()
+    expect(screen.queryByText(/Your Organisations & Context Switcher/i)).toBeNull()
+
+    // 5. ProfilePage: Houses tab works without Linked Organisations section
+    cleanup()
+    renderApp('/profile')
+    expect(screen.queryByRole('tab', { name: /Houses & Organisations/i })).toBeNull()
+    fireEvent.click(screen.getByRole('tab', { name: /^Houses$/i }))
+    expect(screen.getByRole('heading', { name: /House Alignment/i })).toBeTruthy()
+    expect(screen.queryByRole('heading', { name: /Linked Organisations/i })).toBeNull()
+
+    // 6. MissionCreatePage: Sponsor Organisation selector omitted; normal personal mission creation works
+    cleanup()
+    renderApp('/missions/new')
+    expect(screen.queryByLabelText(/Sponsor Organisation/i)).toBeNull()
+    fireEvent.change(screen.getByPlaceholderText(/Deterministic Proof-of-Work/i), {
+      target: { value: 'V1 Personal Mission Flow' },
+    })
+    fireEvent.change(screen.getByPlaceholderText(/Clear overview of the problem/i), {
+      target: { value: 'Verify personal mission creation works cleanly with Organisations deactivated.' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /Save as Draft/i }))
+    expect(screen.getByRole('heading', { name: /V1 Personal Mission Flow/i })).toBeTruthy()
+
+    // 7. MissionDetailPage on historically sponsored mission (mis-forge-sdk) omits Sponsored by attribution
+    cleanup()
+    renderApp('/missions/mis-forge-sdk')
+    expect(screen.getByRole('heading', { name: /SDK TypeScript Type-Safety Audit/i })).toBeTruthy()
+    expect(screen.queryByText(/Sponsored by/i)).toBeNull()
+
+    // 8. ControlRoomPage: Marcus sees Platform Funnel without Organisations stat card or verification queue
+    cleanup()
+    renderApp('/control-room')
+    fireEvent.change(screen.getByLabelText(/Switch Demo Persona/i), { target: { value: 'mem-marcus' } })
+    expect(screen.getByRole('tab', { name: /Platform Funnel/i })).toBeTruthy()
+    expect(screen.queryByRole('tab', { name: /Funnel & Orgs/i })).toBeNull()
+    expect(screen.queryByText(/Organisation Verification Queue/i)).toBeNull()
+    expect(screen.queryByText('Organisations')).toBeNull()
+    expect(screen.getByText('Total Spartans')).toBeTruthy()
+    expect(screen.getByText('Active Missions')).toBeTruthy()
+    expect(screen.getByRole('tab', { name: /Members, Ascendancy & RBAC/i })).toBeTruthy()
+  })
 })
+

@@ -2,6 +2,7 @@ import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { ArenaProvider } from './app/ArenaProvider'
 import { useArena } from './app/arenaContext'
 import RequireAuth from './components/RequireAuth'
+import { FEATURE_FLAGS } from './domain/constants'
 import AppLayout from './layouts/AppLayout'
 import LandingPage from './pages/public/LandingPage'
 import AuthPage from './pages/auth/AuthPage'
@@ -79,7 +80,11 @@ export default function App() {
           <Route path="/personalization" element={<PersonalizationPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/help" element={<HelpPage />} />
-          <Route path="/organisations" element={<OrganisationsPage />} />
+          <Route
+            path="/organisations"
+            element={FEATURE_FLAGS.organisationsEnabled ? <OrganisationsPage /> : <Navigate to="/dashboard" replace />}
+          />
+          <Route path="/organisations/*" element={<Navigate to="/dashboard" replace />} />
           <Route path="/stewardship" element={<StewardshipPage />} />
           <Route path="/control-room" element={<ControlRoomPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
@@ -94,7 +99,14 @@ export default function App() {
           <Route path="/services" element={<Navigate to="/explore?tab=services" replace />} />
           <Route path="/communities" element={<Navigate to="/houses" replace />} />
           <Route path="/learning" element={<Navigate to="/academy" replace />} />
-          <Route path="/organizations" element={<Navigate to="/organisations" replace />} />
+          <Route
+            path="/organizations"
+            element={<Navigate to={FEATURE_FLAGS.organisationsEnabled ? '/organisations' : '/dashboard'} replace />}
+          />
+          <Route
+            path="/organizations/*"
+            element={<Navigate to={FEATURE_FLAGS.organisationsEnabled ? '/organisations' : '/dashboard'} replace />}
+          />
           <Route path="/resources" element={<Navigate to="/explore?tab=resources" replace />} />
           <Route path="/discussions" element={<Navigate to="/explore?tab=discussions" replace />} />
           <Route path="/applications" element={<Navigate to="/activity" replace />} />

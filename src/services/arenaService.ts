@@ -1,4 +1,4 @@
-import { DISCUSSION_UNLOCK_LEVEL } from '../domain/constants'
+import { DISCUSSION_UNLOCK_LEVEL, FEATURE_FLAGS } from '../domain/constants'
 import {
   calculateEligibleCp,
   calculateLevelProgress,
@@ -513,6 +513,9 @@ export function createOrganisation(
     website: string
   },
 ): ServiceResult<OrganisationProfile> {
+  if (!FEATURE_FLAGS.organisationsEnabled) {
+    return { ok: false, error: 'Organisations are deferred to V2 and currently unavailable.' }
+  }
   const memberCheck = requireSpartanMember(state, memberId, 'Sign in as a Spartan to create an organisation profile.')
   if (!memberCheck.ok) return memberCheck
   if (!input.name.trim()) return { ok: false, error: 'Organisation name is required.' }
@@ -565,6 +568,9 @@ export function setOrganisationVerification(
   organisationId: string,
   status: OrganisationProfile['verificationStatus'],
 ): ServiceResult<OrganisationProfile> {
+  if (!FEATURE_FLAGS.organisationsEnabled) {
+    return { ok: false, error: 'Organisation verification is deferred to V2 and currently unavailable.' }
+  }
   const actorCheck = requireSpartanMember(state, actorId)
   if (!actorCheck.ok) return actorCheck
   if (!memberHasPermission(actorId, state.permissionGrants, 'platform.admin')) {
@@ -586,6 +592,9 @@ export function switchActiveOrganisation(
   organisationId: string | null,
   actorMemberId: string | null = state.currentMemberId,
 ): ServiceResult<null> {
+  if (!FEATURE_FLAGS.organisationsEnabled) {
+    return { ok: false, error: 'Organisation workspace switching is deferred to V2 and currently unavailable.' }
+  }
   const actorCheck = requireSpartanMember(state, actorMemberId, 'Sign in as a Spartan to switch organisation context.')
   if (!actorCheck.ok) return actorCheck
 
@@ -657,6 +666,9 @@ export function createMission(state: ArenaPrototypeState, creatorId: string, inp
   if (!creatorCheck.ok) return creatorCheck
   if (!memberHasPermission(creatorId, state.permissionGrants, 'mission.create')) {
     return { ok: false, error: 'Your account does not currently have Mission Creator permission. Request it in Control Room or switch to Jordan Davis / Maya Kim.' }
+  }
+  if (!FEATURE_FLAGS.organisationsEnabled && input.sponsorOrganisationId) {
+    return { ok: false, error: 'Organisation mission sponsorship is deferred to V2 and unavailable in V1.' }
   }
   if (!input.title.trim() || !input.description.trim()) {
     return { ok: false, error: 'Mission title and description are required.' }
@@ -734,7 +746,7 @@ export function createMission(state: ArenaPrototypeState, creatorId: string, inp
     houseId: input.houseId,
     crossHouseEligible: input.houseId === 'echoes' ? true : input.crossHouseEligible,
     creatorMemberId: creatorId,
-    sponsorOrganisationId: input.sponsorOrganisationId || undefined,
+    sponsorOrganisationId: FEATURE_FLAGS.organisationsEnabled ? input.sponsorOrganisationId || undefined : undefined,
     assignedReviewerIds: [creatorId],
     participationFormat: input.participationFormat,
     participationOpen: status === 'active',
@@ -751,7 +763,7 @@ export function createMission(state: ArenaPrototypeState, creatorId: string, inp
     status,
     budget: {
       isFunded: input.isFunded,
-      fundingSource: input.sponsorOrganisationId ? 'organisation_sponsor' : input.isFunded ? 'member_spendable' : 'system_non_rewarded',
+      fundingSource: FEATURE_FLAGS.organisationsEnabled && input.sponsorOrganisationId ? 'organisation_sponsor' : input.isFunded ? 'member_spendable' : 'system_non_rewarded',
       rewardPerContributorXp: rewardXp,
       rewardBand: bandInfo.band,
       cpTierValue: bandInfo.cpValue,
@@ -2187,6 +2199,9 @@ export function addExploreProject(
 ): ServiceResult<ExploreProject> {
   const memberCheck = requireSpartanMember(state, memberId, 'Sign in as a Spartan to add a project.')
   if (!memberCheck.ok) return memberCheck
+  if (!FEATURE_FLAGS.organisationsEnabled && input.organisationId) {
+    return { ok: false, error: 'Organisation project linking is deferred to V2 and unavailable in V1.' }
+  }
   if (!input.title.trim()) return { ok: false, error: 'Project title is required.' }
   const project: ExploreProject = {
     ...input,
@@ -2332,6 +2347,9 @@ export function addExploreOpportunity(
 ): ServiceResult<ExploreOpportunity> {
   const memberCheck = requireSpartanMember(state, memberId, 'Sign in as a Spartan to publish an opportunity.')
   if (!memberCheck.ok) return memberCheck
+  if (!FEATURE_FLAGS.organisationsEnabled && input.organisationId) {
+    return { ok: false, error: 'Organisation-linked opportunities are deferred to V2 and unavailable in V1.' }
+  }
   if (!input.title.trim()) return { ok: false, error: 'Opportunity title is required.' }
   const opp: ExploreOpportunity = {
     ...input,

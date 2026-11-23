@@ -6,6 +6,7 @@ import PageScaffold from '../components/PageScaffold'
 import PermissionGate from '../components/PermissionGate'
 import {
   EVIDENCE_TYPE_LABELS,
+  FEATURE_FLAGS,
   formatParticipationFormat,
   formatVerificationStatus,
   getHouseName,
@@ -174,7 +175,7 @@ export default function MissionCreatePage() {
       tags: tagsText.split(','),
       houseId,
       crossHouseEligible: houseId === 'echoes' ? true : crossHouseEligible,
-      sponsorOrganisationId: sponsorOrganisationId || undefined,
+      sponsorOrganisationId: FEATURE_FLAGS.organisationsEnabled ? sponsorOrganisationId || undefined : undefined,
       participationFormat,
       eligibilityNote,
       capacity,
@@ -276,17 +277,19 @@ export default function MissionCreatePage() {
                     ))}
                   </select>
                 </label>
-                <label>
-                  Sponsor Organisation (optional)
-                  <select value={sponsorOrganisationId} onChange={(e) => setSponsorOrganisationId(e.target.value)}>
-                    <option value="">Personal Account Funded</option>
-                    {memberOrganisations.map((org) => (
-                      <option key={org.id} value={org.id}>
-                        {org.name} ({formatVerificationStatus(org.verificationStatus)})
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                {FEATURE_FLAGS.organisationsEnabled && (
+                  <label>
+                    Sponsor Organisation (optional)
+                    <select value={sponsorOrganisationId} onChange={(e) => setSponsorOrganisationId(e.target.value)}>
+                      <option value="">Personal Account Funded</option>
+                      {memberOrganisations.map((org) => (
+                        <option key={org.id} value={org.id}>
+                          {org.name} ({formatVerificationStatus(org.verificationStatus)})
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
                 <label className="full-field" style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                   <input
                     type="checkbox"

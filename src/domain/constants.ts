@@ -13,6 +13,14 @@ import type {
   SubmissionStatus,
 } from './types'
 
+export const FEATURE_FLAGS = {
+  /**
+   * V1 deferral: Organisation features are deactivated across UI, routes, state, and services
+   * while preserving V2 data models, seed records, and underlying service implementations.
+   */
+  organisationsEnabled: false,
+} as const
+
 export const LEVEL_THRESHOLDS: number[] = [
   0,     // L1
   100,   // L2

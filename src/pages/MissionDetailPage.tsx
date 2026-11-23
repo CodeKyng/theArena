@@ -16,6 +16,7 @@ import { useArena } from '../app/arenaContext'
 import PageScaffold from '../components/PageScaffold'
 import {
   EVIDENCE_TYPE_LABELS,
+  FEATURE_FLAGS,
   formatMissionStatus,
   formatParticipationFormat,
   formatSubmissionStatus,
@@ -79,9 +80,10 @@ export default function MissionDetailPage() {
   const house = state.houses.find((h) => h.id === mission.houseId)
   const houseName = getHouseName(mission.houseId, state.houses)
   const creator = state.members.find((m) => m.id === mission.creatorMemberId)
-  const org = mission.sponsorOrganisationId
-    ? state.organisations.find((o) => o.id === mission.sponsorOrganisationId)
-    : null
+  const org =
+    FEATURE_FLAGS.organisationsEnabled && mission.sponsorOrganisationId
+      ? state.organisations.find((o) => o.id === mission.sponsorOrganisationId)
+      : null
 
   const participations = state.missionParticipations.filter((p) => p.missionId === mission.id)
   const myParticipation = currentMember
@@ -229,7 +231,9 @@ export default function MissionDetailPage() {
             <p>{mission.description}</p>
             <p style={{ marginTop: 6, fontSize: 12.5 }}>
               Created by <b>{creator?.displayName ?? 'Arena Steward'}</b>
-              {org ? ` · Sponsored by ${org.name} (${formatVerificationStatus(org.verificationStatus)})` : ''}
+              {FEATURE_FLAGS.organisationsEnabled && org
+                ? ` · Sponsored by ${org.name} (${formatVerificationStatus(org.verificationStatus)})`
+                : ''}
               {` · Deadline: ${mission.deadline}`}
             </p>
           </div>

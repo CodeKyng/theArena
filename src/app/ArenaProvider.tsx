@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
+import { FEATURE_FLAGS } from '../domain/constants'
 import { calculateLevelProgress, deriveXpBalance, memberHasPermission } from '../domain/progression'
 import type {
   ArenaPrototypeState,
@@ -139,7 +140,7 @@ export function ArenaProvider({ children }: { children: ReactNode }) {
   )
 
   const memberOrganisations = useMemo(() => {
-    if (!currentMember) return []
+    if (!FEATURE_FLAGS.organisationsEnabled || !currentMember) return []
     const orgIds = new Set(
       state.organisationMemberships
         .filter((om) => om.memberId === currentMember.id)
@@ -150,7 +151,7 @@ export function ArenaProvider({ children }: { children: ReactNode }) {
 
   const activeOrganisation = useMemo(
     () =>
-      currentMember && state.activeOrganisationId
+      FEATURE_FLAGS.organisationsEnabled && currentMember && state.activeOrganisationId
         ? memberOrganisations.find((o) => o.id === state.activeOrganisationId) ?? null
         : null,
     [currentMember, memberOrganisations, state.activeOrganisationId],

@@ -5,6 +5,7 @@ import PermissionGate from '../components/PermissionGate'
 import StatCard from '../components/StatCard'
 import {
   ASCENDANCY_LADDER,
+  FEATURE_FLAGS,
   formatVerificationStatus,
   getHouseName,
   PERMISSION_LABELS,
@@ -80,7 +81,9 @@ export default function ControlRoomPage() {
               <span className="section-kicker">PLATFORM GOVERNANCE · CONTROL ROOM</span>
               <h2>Arena Control Room</h2>
               <p>
-                Appoint Ascendancy ranks, assign scoped member permissions, review high-value (&gt;1,500 XP) missions, verify organisations, record XP adjustments, and configure seasonal caps.
+                {FEATURE_FLAGS.organisationsEnabled
+                  ? 'Appoint Ascendancy ranks, assign scoped member permissions, review high-value (>1,500 XP) missions, verify organisations, record XP adjustments, and configure seasonal caps.'
+                  : 'Appoint Ascendancy ranks, assign scoped member permissions, review high-value (>1,500 XP) missions, record XP adjustments, and configure seasonal caps.'}
               </p>
             </div>
             <div className="admin-seal">
@@ -92,7 +95,7 @@ export default function ControlRoomPage() {
           <div className="arena-tabs" role="tablist">
             {(
               [
-                ['overview', 'Funnel & Orgs'],
+                ['overview', FEATURE_FLAGS.organisationsEnabled ? 'Funnel & Orgs' : 'Platform Funnel'],
                 ['members', 'Members, Ascendancy & RBAC'],
                 ['high-value', `High-Value Missions (${pendingHighValue.length})`],
                 ['ledger', 'XP Ledger Adjustments'],
@@ -128,12 +131,14 @@ export default function ControlRoomPage() {
                   change={`${pendingHighValue.length} awaiting >1,500 XP approval`}
                   icon={<CheckCircle2 size={16} />}
                 />
-                <StatCard
-                  label="Organisations"
-                  value={String(state.organisations.length)}
-                  change={`${state.organisations.filter((o) => o.verificationStatus !== 'verified').length} unverified / pending`}
-                  icon={<Sliders size={16} />}
-                />
+                {FEATURE_FLAGS.organisationsEnabled && (
+                  <StatCard
+                    label="Organisations"
+                    value={String(state.organisations.length)}
+                    change={`${state.organisations.filter((o) => o.verificationStatus !== 'verified').length} unverified / pending`}
+                    icon={<Sliders size={16} />}
+                  />
+                )}
                 <StatCard
                   label="Audit Entries"
                   value={String(state.auditLogs.length)}
@@ -142,39 +147,41 @@ export default function ControlRoomPage() {
                 />
               </div>
 
-              <div className="dashboard-panel">
-                <div className="panel-title">
-                  <h2>Organisation Verification Queue</h2>
-                </div>
-                <div className="arena-table-wrap">
-                  <table className="arena-table">
-                    <thead>
-                      <tr>
-                        <th>Organisation</th>
-                        <th>Type</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {state.organisations.map((org) => (
-                        <tr key={org.id}>
-                          <td><b>{org.name}</b></td>
-                          <td>{org.kind}</td>
-                          <td><span className="listing-kind">{formatVerificationStatus(org.verificationStatus)}</span></td>
-                          <td>
-                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                              <button type="button" className="button button-bright button-small" onClick={() => setOrgVerification(org.id, 'verified')}>Verify</button>
-                              <button type="button" className="button button-quiet button-small" onClick={() => setOrgVerification(org.id, 'pending_review')}>Pending</button>
-                              <button type="button" className="button button-danger button-small" onClick={() => setOrgVerification(org.id, 'unverified')}>Unverify</button>
-                            </div>
-                          </td>
+              {FEATURE_FLAGS.organisationsEnabled && (
+                <div className="dashboard-panel">
+                  <div className="panel-title">
+                    <h2>Organisation Verification Queue</h2>
+                  </div>
+                  <div className="arena-table-wrap">
+                    <table className="arena-table">
+                      <thead>
+                        <tr>
+                          <th>Organisation</th>
+                          <th>Type</th>
+                          <th>Status</th>
+                          <th>Actions</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {state.organisations.map((org) => (
+                          <tr key={org.id}>
+                            <td><b>{org.name}</b></td>
+                            <td>{org.kind}</td>
+                            <td><span className="listing-kind">{formatVerificationStatus(org.verificationStatus)}</span></td>
+                            <td>
+                              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                <button type="button" className="button button-bright button-small" onClick={() => setOrgVerification(org.id, 'verified')}>Verify</button>
+                                <button type="button" className="button button-quiet button-small" onClick={() => setOrgVerification(org.id, 'pending_review')}>Pending</button>
+                                <button type="button" className="button button-danger button-small" onClick={() => setOrgVerification(org.id, 'unverified')}>Unverify</button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
 

@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { INITIAL_ARENA_STATE } from '../../data/seedData'
+import { FEATURE_FLAGS } from '../../domain/constants'
 import { buildLeaderboard, deriveXpBalance, memberHasPermission } from '../../domain/progression'
 import {
   addDiscussionReply,
+  addExploreOpportunity,
+  addExploreProject,
   adminAdjustXp,
   appointAscendancy,
   approveHighValueMission,
@@ -408,10 +411,14 @@ describe('The Arena 10 Critical User Journeys', () => {
     }
   })
 
-  it('Journey 9 & 10: Unified Account -> Organisation creation (unverified, 0 XP boost) + Control Room verification + Scoped RBAC & Ascendancy', () => {
-    // Jordan creates an Organisation -> starts unverified, zero XP/Ascendancy inherited
-    const jordanBefore = deriveXpBalance('mem-jordan', INITIAL_ARENA_STATE.xpTransactions)
-    const orgRes = createOrganisation(INITIAL_ARENA_STATE, 'mem-jordan', {
+  it('Journey 9 & 10 (V1 Org Deactivated): Blocks org creation/switching/verification while preserving Mentorship, Scoped RBAC & Ascendancy', () => {
+    expect(FEATURE_FLAGS.organisationsEnabled).toBe(false)
+    let s = INITIAL_ARENA_STATE
+    const orgCountBefore = s.organisations.length
+    const omCountBefore = s.organisationMemberships.length
+
+    // Organisation creation, switching, and verification are cleanly rejected in V1 without mutating state
+    const orgRes = createOrganisation(s, 'mem-jordan', {
       name: 'Delta Builders Guild',
       kind: 'Team',
       ecosystem: 'Base',
@@ -419,26 +426,16 @@ describe('The Arena 10 Critical User Journeys', () => {
       description: 'Open benchmarking collective.',
       website: 'https://deltabuilders.demo',
     })
-    expect(orgRes.ok).toBe(true)
-    if (!orgRes.ok) return
-    let s = orgRes.state
-    expect(orgRes.data.verificationStatus).toBe('unverified')
-    expect(deriveXpBalance('mem-jordan', s.xpTransactions).lifetimeXp).toBe(jordanBefore.lifetimeXp)
+    expect(orgRes.ok).toBe(false)
+    expect(s.organisations.length).toBe(orgCountBefore)
+    expect(s.organisationMemberships.length).toBe(omCountBefore)
 
-    // Switch context to org
-    const sw = switchActiveOrganisation(s, orgRes.data.id, 'mem-jordan')
-    expect(sw.ok).toBe(true)
-    if (sw.ok) s = sw.state
-    expect(s.activeOrganisationId).toBe(orgRes.data.id)
+    const sw = switchActiveOrganisation(s, 'org-helix', 'mem-jordan')
+    expect(sw.ok).toBe(false)
+    expect(s.activeOrganisationId).toBeNull()
 
-    // Non-admin cannot verify organisation; Control Room admin verifies
-    expect(setOrganisationVerification(s, 'mem-maya', orgRes.data.id, 'verified').ok).toBe(false)
-    const ver = setOrganisationVerification(s, 'mem-marcus', orgRes.data.id, 'verified')
-    expect(ver.ok).toBe(true)
-    if (ver.ok) {
-      expect(ver.data.verificationStatus).toBe('verified')
-      s = ver.state
-    }
+    expect(setOrganisationVerification(s, 'mem-marcus', 'org-veridian', 'verified').ok).toBe(false)
+    expect(s.organisations.find((o) => o.id === 'org-veridian')?.verificationStatus).toBe('pending_review')
 
     // Mentorship verification by Elena (Elder)
     const ment = verifyMentorshipSession(s, 'mem-elena', 'ment-2')
@@ -737,24 +734,12 @@ describe('The Arena 10 Critical User Journeys', () => {
     expect(switchDemoPersona(visitorTargetState, 'mem-maya').ok).toBe(false)
     expect(signInDemoByEmail(visitorTargetState, 'maya.kim@arena.demo').ok).toBe(false)
 
-    // 2. signOutAccount clears both currentMemberId and activeOrganisationId
-    const orgCreated = createOrganisation(loggedInJordan.state, 'mem-jordan', {
-      name: 'Auth Guard Org',
-      kind: 'Team',
-      ecosystem: 'Ethereum',
-      tagline: 'Security check',
-      description: 'Auth check org',
-      website: 'https://authguard.demo',
-    })
-    expect(orgCreated.ok).toBe(true)
-    if (!orgCreated.ok) return
-    expect(orgCreated.state.activeOrganisationId).toBe(orgCreated.data.id)
+    // 2. signOutAccount clears both currentMemberId and any stale activeOrganisationId
+    expect(switchActiveOrganisation(loggedInJordan.state, 'org-helix', 'mem-jordan').ok).toBe(false)
+    expect(switchActiveOrganisation(loggedInJordan.state, 'org-helix', 'mem-maya').ok).toBe(false)
+    expect(switchActiveOrganisation({ ...loggedInJordan.state, currentMemberId: null }, 'org-helix').ok).toBe(false)
 
-    // Non-member Maya cannot switch into Jordan's org; unauthenticated state cannot switch org
-    expect(switchActiveOrganisation(orgCreated.state, orgCreated.data.id, 'mem-maya').ok).toBe(false)
-    expect(switchActiveOrganisation({ ...orgCreated.state, currentMemberId: null }, orgCreated.data.id).ok).toBe(false)
-
-    const signedOut = signOutAccount(orgCreated.state)
+    const signedOut = signOutAccount({ ...loggedInJordan.state, activeOrganisationId: 'org-helix' })
     expect(signedOut.ok).toBe(true)
     if (!signedOut.ok) return
     expect(signedOut.state.currentMemberId).toBeNull()
@@ -768,32 +753,45 @@ describe('The Arena 10 Critical User Journeys', () => {
     expect(toggleBookmark(visitorTargetState, 'mem-maya', 'mission', 'mis-intro').ok).toBe(false)
     expect(adminAdjustXp(visitorTargetState, 'mem-maya', 'mem-jordan', 10, 'Unauthorized').ok).toBe(false)
 
-    // 4. loadArenaState sanitizes missing/visitor currentMemberId and invalid activeOrganisationId while preserving data
+    // 4. loadArenaState sanitizes missing/visitor currentMemberId and clears stale activeOrganisationId while preserving stored org records
     if (typeof window !== 'undefined') {
       window.localStorage.setItem(
         ARENA_STORAGE_KEY,
         JSON.stringify({
-          ...orgCreated.state,
+          ...loggedInJordan.state,
           currentMemberId: 'mem-does-not-exist',
-          activeOrganisationId: orgCreated.data.id,
+          activeOrganisationId: 'org-helix',
         }),
       )
       const sanitizedMissing = loadArenaState()
       expect(sanitizedMissing.currentMemberId).toBeNull()
       expect(sanitizedMissing.activeOrganisationId).toBeNull()
-      expect(sanitizedMissing.organisations.some((o) => o.id === orgCreated.data.id)).toBe(true)
+      expect(sanitizedMissing.organisations.some((o) => o.id === 'org-helix')).toBe(true)
 
       window.localStorage.setItem(
         ARENA_STORAGE_KEY,
         JSON.stringify({
           ...visitorTargetState,
           currentMemberId: 'mem-maya',
-          activeOrganisationId: orgCreated.data.id,
+          activeOrganisationId: 'org-helix',
         }),
       )
       const sanitizedVisitor = loadArenaState()
       expect(sanitizedVisitor.currentMemberId).toBeNull()
       expect(sanitizedVisitor.activeOrganisationId).toBeNull()
+
+      window.localStorage.setItem(
+        ARENA_STORAGE_KEY,
+        JSON.stringify({
+          ...loggedInJordan.state,
+          currentMemberId: 'mem-jordan',
+          activeOrganisationId: 'org-helix',
+        }),
+      )
+      const sanitizedActiveSpartan = loadArenaState()
+      expect(sanitizedActiveSpartan.currentMemberId).toBe('mem-jordan')
+      expect(sanitizedActiveSpartan.activeOrganisationId).toBeNull()
+      expect(sanitizedActiveSpartan.organisations.length).toBe(INITIAL_ARENA_STATE.organisations.length)
 
       window.localStorage.removeItem(ARENA_STORAGE_KEY)
     }
@@ -878,5 +876,81 @@ describe('The Arena 10 Critical User Journeys', () => {
     expect(allRead.state.notifications.find((n) => n.id === 'notif-3')?.read).toBe(false)
     expect(allRead.state.notifications.find((n) => n.id === 'notif-4')?.read).toBe(false)
   })
+
+  it('V1 Organisation Deactivation: rejects all org service mutations and org-sponsored missions while preserving seed records and personal missions', () => {
+    expect(FEATURE_FLAGS.organisationsEnabled).toBe(false)
+    const jordanXpBefore = deriveXpBalance('mem-jordan', INITIAL_ARENA_STATE.xpTransactions).spendableXp
+    const auditBefore = INITIAL_ARENA_STATE.auditLogs.length
+
+    // 1. Seeded organisation data and historical mission sponsor references remain preserved intact
+    expect(INITIAL_ARENA_STATE.organisations.length).toBeGreaterThanOrEqual(3)
+    expect(INITIAL_ARENA_STATE.organisationMemberships.length).toBeGreaterThanOrEqual(4)
+    expect(INITIAL_ARENA_STATE.missions.some((m) => m.sponsorOrganisationId === 'org-helix')).toBe(true)
+    expect(INITIAL_ARENA_STATE.activeOrganisationId).toBeNull()
+
+    // 2. Direct service calls for org creation, verification, switching, and org-linked creation fail cleanly
+    const orgCreate = createOrganisation(INITIAL_ARENA_STATE, 'mem-jordan', {
+      name: 'Dormant Org',
+      kind: 'Project',
+      ecosystem: 'Ethereum',
+      tagline: 'Should be blocked',
+      description: 'Should be blocked in V1',
+      website: 'https://example.org',
+    })
+    expect(orgCreate.ok).toBe(false)
+
+    expect(setOrganisationVerification(INITIAL_ARENA_STATE, 'mem-marcus', 'org-veridian', 'verified').ok).toBe(false)
+    expect(switchActiveOrganisation(INITIAL_ARENA_STATE, 'org-helix', 'mem-jordan').ok).toBe(false)
+    expect(switchActiveOrganisation(INITIAL_ARENA_STATE, null, 'mem-jordan').ok).toBe(false)
+
+    // 3. Mission creation with sponsorOrganisationId fails BEFORE XP reserve or mission mutation
+    const sponsoredMission = createMission(
+      INITIAL_ARENA_STATE,
+      'mem-jordan',
+      baseCreateInput({ sponsorOrganisationId: 'org-helix', rewardPerContributorXp: 200, maxContributors: 1 }),
+    )
+    expect(sponsoredMission.ok).toBe(false)
+    expect(deriveXpBalance('mem-jordan', INITIAL_ARENA_STATE.xpTransactions).spendableXp).toBe(jordanXpBefore)
+    expect(INITIAL_ARENA_STATE.auditLogs.length).toBe(auditBefore)
+
+    // 4. Explore project/opportunity linking with organisationId also fails cleanly
+    expect(
+      addExploreProject(INITIAL_ARENA_STATE, 'mem-jordan', {
+        title: 'Org Project Attempt',
+        tagline: 'Blocked',
+        description: 'Blocked',
+        houseId: 'forge-masters',
+        status: 'Building',
+        tags: ['Test'],
+        repoOrDemoUrl: 'https://github.com/test/repo',
+        teamSize: 1,
+        organisationId: 'org-helix',
+      }).ok,
+    ).toBe(false)
+    expect(
+      addExploreOpportunity(INITIAL_ARENA_STATE, 'mem-jordan', {
+        title: 'Org Opportunity Attempt',
+        organisationName: 'Helix',
+        organisationId: 'org-helix',
+        houseId: 'forge-masters',
+        kind: 'Role',
+        compensationLabel: 'Grant',
+        description: 'Blocked',
+        tags: ['Role'],
+      }).ok,
+    ).toBe(false)
+
+    // 5. Normal personal-funded mission creation succeeds without sponsorOrganisationId
+    const personalMission = createMission(
+      INITIAL_ARENA_STATE,
+      'mem-jordan',
+      baseCreateInput({ rewardPerContributorXp: 150, maxContributors: 1 }),
+    )
+    expect(personalMission.ok).toBe(true)
+    if (!personalMission.ok) return
+    expect(personalMission.data.sponsorOrganisationId).toBeUndefined()
+    expect(personalMission.data.budget.fundingSource).toBe('member_spendable')
+  })
 })
+
 

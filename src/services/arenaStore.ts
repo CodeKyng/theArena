@@ -1,4 +1,5 @@
 import { INITIAL_ARENA_STATE } from '../data/seedData'
+import { FEATURE_FLAGS } from '../domain/constants'
 import type { ArenaPrototypeState } from '../domain/types'
 
 export const ARENA_STORAGE_KEY = 'arena.prototype.v1'
@@ -32,6 +33,14 @@ export function loadArenaState(): ArenaPrototypeState {
       return {
         ...merged,
         currentMemberId: null,
+        activeOrganisationId: null,
+      }
+    }
+
+    if (!FEATURE_FLAGS.organisationsEnabled) {
+      return {
+        ...merged,
+        currentMemberId: activeMember.id,
         activeOrganisationId: null,
       }
     }
