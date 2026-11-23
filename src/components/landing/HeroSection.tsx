@@ -1,16 +1,22 @@
-import { ArrowRight, ArrowUpRight, BriefcaseBusiness, FolderKanban, Globe2, UsersRound } from 'lucide-react'
+import { ArrowRight, ArrowUpRight, Flame, FolderKanban, Star, Target, UsersRound } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { useArena } from '../../app/arenaContext'
 import nexusHeroBackground from '../../assets/NexusHeroBg.jpg'
 import nexusHero from '../../assets/NexusHero.png'
 
-const metrics = [
-  { icon: UsersRound, value: '12.4k+', label: 'Builders' },
-  { icon: BriefcaseBusiness, value: '86', label: 'Open opportunities' },
-  { icon: FolderKanban, value: '327', label: 'Projects' },
-  { icon: Globe2, value: '40+', label: 'Ecosystems' },
-]
-
 export default function HeroSection() {
+  const { state, isAuthenticated } = useArena()
+  const activeMissionsCount = state.missions.filter((m) => m.status === 'active').length
+  const membersCount = state.members.length
+  const projectsCount = state.projects.length
+
+  const metrics = [
+    { icon: UsersRound, value: `${membersCount} active`, label: 'Community Members' },
+    { icon: Target, value: `${activeMissionsCount}`, label: 'Active Missions' },
+    { icon: FolderKanban, value: `${projectsCount}`, label: 'Live Projects' },
+    { icon: Flame, value: '6 Houses', label: 'Community Houses' },
+  ]
+
   return (
     <section className="hero-section" id="explore">
       <img className="hero-background" src={nexusHeroBackground} alt="" aria-hidden="true" />
@@ -18,30 +24,42 @@ export default function HeroSection() {
       <img className="hero-person" src={nexusHero} alt="A builder wearing a digital reality visor" />
 
       <div className="hero-copy">
-        <div className="eyebrow"><span className="live-dot" /> THE HOME OF WEB3 BUILDERS</div>
+        <div className="eyebrow"><span className="live-dot" /> A COMMUNITY FOR BECOMING</div>
         <h1>Build what<br />comes <em>next.</em></h1>
-        <p className="hero-description">Find your people. Discover meaningful work. Build what comes next—together.</p>
+        <p className="hero-description">
+          Join a House, build practical skills in the Academy, take on real missions, and earn recognition for verified work.
+        </p>
         <div className="hero-proof">
-          <span className="hero-proof-stars" aria-label="Rated 4.9 out of 5">★★★★★</span>
-          <span><b>12,400+</b> builders already here</span>
+          <span className="hero-proof-stars" aria-label="Arena Season 2">
+            {[0, 1, 2, 3, 4].map((index) => (
+              <Star key={index} size={15} fill="currentColor" strokeWidth={1.7} aria-hidden="true" />
+            ))}
+          </span>
+          <span><b>Season 2 · 90-Day Cycle</b> · Open to Builders &amp; Learners</span>
         </div>
         <div className="hero-actions">
-          <Link className="button button-bright" to="/discover">Find your people <ArrowRight size={17} /></Link>
-          <Link className="button button-quiet" to="/opportunities">Explore opportunities <ArrowUpRight size={16} /></Link>
+          <Link
+            className="button button-bright"
+            to={isAuthenticated ? '/dashboard' : '/login'}
+            state={isAuthenticated ? undefined : { from: { pathname: '/dashboard', search: '', hash: '' } }}
+          >
+            Enter The Arena <ArrowRight size={17} />
+          </Link>
+          <Link className="button button-quiet" to="/missions">Explore Missions <ArrowUpRight size={16} /></Link>
         </div>
       </div>
 
       <aside className="hero-feature-card">
         <div className="hero-feature-icon">A</div>
         <div className="hero-feature-copy">
-          <span className="section-kicker">YOUR NEXT MOVE</span>
-          <h2>Find your next<br />way to build.</h2>
-          <Link to="/opportunities">Explore opportunities <ArrowRight size={15} /></Link>
+          <span className="section-kicker">GET STARTED</span>
+          <h2>Start as a<br />New Spartan.</h2>
+          <Link to="/register">Create your account <ArrowRight size={15} /></Link>
         </div>
-        <Link className="hero-feature-arrow" to="/discover" aria-label="Discover the Arena"><ArrowUpRight size={18} /></Link>
+        <Link className="hero-feature-arrow" to="/houses" aria-label="Explore the six Houses"><ArrowUpRight size={18} /></Link>
       </aside>
 
-      <div className="hero-metrics" aria-label="Arena community at a glance">
+      <div className="hero-metrics" aria-label="Arena ecosystem at a glance">
         {metrics.map(({ icon: Icon, value, label }) => (
           <div className="hero-metric" key={label}>
             <span className="hero-metric-icon"><Icon size={21} strokeWidth={1.8} /></span>

@@ -1,16 +1,51 @@
 import { ArrowRight } from 'lucide-react'
-import { Link } from 'react-router-dom'
-import { listings } from '../../data/listings'
-import { useAppState } from '../../app/appStateContext'
+import { Link, useNavigate } from 'react-router-dom'
+import { useArena } from '../../app/arenaContext'
 import ListingCard from '../ListingCard'
 
 export default function OpportunityHighlights() {
-  const { flash } = useAppState()
-  return <section className="discover-section section-wrap">
-    <div className="section-heading">
-      <div><div className="section-kicker">YOUR NEXT MOVE</div><h2>Find where you <em>fit.</em></h2><p>Good things happen when the right people find each other.</p></div>
-      <Link className="text-link" to="/discover">Explore everything <ArrowRight size={16} /></Link>
-    </div>
-    <div className="opportunity-grid">{listings.slice(0, 3).map((item) => <ListingCard key={item.title} item={item} flash={flash} />)}</div>
-  </section>
+  const { state, currentMember, toggleBookmark } = useArena()
+  const navigate = useNavigate()
+  const featured = state.missions.filter((m) => m.status === 'active').slice(0, 3)
+
+  return (
+    <section className="discover-section section-wrap">
+      <div className="section-heading">
+        <div>
+          <div className="section-kicker">ACTIVE MISSIONS</div>
+          <h2>Proof of Work in <em>action.</em></h2>
+          <p>Take on community missions, submit your work for review, and earn XP and Contribution Points when approved.</p>
+        </div>
+        <Link className="text-link" to="/missions">Browse all missions <ArrowRight size={16} /></Link>
+      </div>
+
+      <div className="opportunity-grid">
+        {featured.map((mission) => {
+          const house = state.houses.find((h) => h.id === mission.houseId)
+          const saved = currentMember
+            ? state.savedBookmarks.some(
+                (b) => b.memberId === currentMember.id && b.targetType === 'mission' && b.targetId === mission.id,
+              )
+            : false
+          return (
+            <ListingCard
+              key={mission.id}
+              glyph={house?.glyph ?? '⌘'}
+              tone={house?.tone ?? 'blue'}
+              kind={`House ${house?.name ?? mission.houseId}`}
+              kindTone="featured"
+              meta={`${mission.category} · ${mission.difficulty}`}
+              title={mission.title}
+              description={mission.description}
+              tags={mission.tags.slice(0, 3)}
+              reward={`+${mission.budget.rewardPerContributorXp} XP · +${mission.budget.cpTierValue} CP`}
+              saved={saved}
+              onToggleSave={() => toggleBookmark('mission', mission.id)}
+              onOpen={() => navigate(`/missions/${mission.id}`)}
+            />
+          )
+        })}
+      </div>
+    </section>
+  )
 }

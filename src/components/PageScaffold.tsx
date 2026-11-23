@@ -1,15 +1,23 @@
 import type { ReactNode } from 'react'
 import PageHeader from './PageHeader'
 
-export default function PageScaffold({ name, description, section, flash, children }: {
+export default function PageScaffold({
+  name,
+  description,
+  section,
+  actions,
+  children,
+}: {
   name: string
-  description: string
+  description?: string
   section: string
-  flash: (message: string) => void
+  actions?: ReactNode
   children: ReactNode
 }) {
-  return <div className="inner-page">
-    <PageHeader name={name} description={description} section={section} flash={flash} />
-    {children}
-  </div>
+  return (
+    <div className="inner-page">
+      <PageHeader name={name} description={description} section={section} actions={actions} />
+      {children}
+    </div>
+  )
 }

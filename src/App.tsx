@@ -1,63 +1,125 @@
-import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
-import { ADMIN_PAGES, AUTH_PATHS, MEMBER_PAGES, ORG_PAGES, PUBLIC_PAGES, pagePath } from './app/navigation'
-import { AppStateProvider } from './app/AppState'
-import { AuthProvider } from './app/AuthProvider'
-import AuthGate from './components/AuthGate'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { ArenaProvider } from './app/ArenaProvider'
+import { useArena } from './app/arenaContext'
+import RequireAuth from './components/RequireAuth'
+import { FEATURE_FLAGS } from './domain/constants'
 import AppLayout from './layouts/AppLayout'
 import LandingPage from './pages/public/LandingPage'
 import AuthPage from './pages/auth/AuthPage'
-import DirectoryPage from './pages/public/DirectoryPage'
-import GeneralPage from './pages/public/GeneralPage'
-import MemberPage from './pages/member/MemberPage'
-import OrganizationPage from './pages/organization/OrganizationPage'
-import AdminPage from './pages/admin/AdminPage'
+import HomePage from './pages/HomePage'
+import NotificationsPage from './pages/NotificationsPage'
+import MissionsPage from './pages/MissionsPage'
+import MissionCreatePage from './pages/MissionCreatePage'
+import MissionDetailPage from './pages/MissionDetailPage'
+import HousesPage from './pages/HousesPage'
+import HouseDetailPage from './pages/HouseDetailPage'
+import ExplorePage from './pages/ExplorePage'
+import AcademyPage from './pages/AcademyPage'
+import EventsPage from './pages/EventsPage'
+import LeaderboardsPage from './pages/LeaderboardsPage'
+import ActivityPage from './pages/ActivityPage'
+import ProfilePage from './pages/ProfilePage'
+import PersonalizationPage from './pages/PersonalizationPage'
+import SettingsPage from './pages/SettingsPage'
+import HelpPage from './pages/HelpPage'
+import OrganisationsPage from './pages/OrganisationsPage'
+import StewardshipPage from './pages/StewardshipPage'
+import ControlRoomPage from './pages/ControlRoomPage'
 import NotFoundPage from './pages/NotFoundPage'
-import { homeForRole } from './app/authRoutes'
-import { useAuth } from './app/authContext'
+
+function SignupRedirect() {
+  const location = useLocation()
+  return <Navigate to="/register" replace state={location.state} />
+}
+
+function NotFoundRoute() {
+  const { isAuthenticated } = useArena()
+  if (isAuthenticated) {
+    return (
+      <AppLayout>
+        <NotFoundPage />
+      </AppLayout>
+    )
+  }
+  return <NotFoundPage />
+}
 
 export default function App() {
   return (
-    <AuthProvider>
-    <AppStateProvider>
+    <ArenaProvider>
       <Routes>
+        <Route path="/login" element={<AuthPage mode="login" />} />
+        <Route path="/register" element={<AuthPage mode="register" />} />
+        <Route path="/signup" element={<SignupRedirect />} />
+
         <Route element={<AppLayout />}>
-          <Route index element={<LandingPage />} />
-          {PUBLIC_PAGES.map((name) => (
-            <Route key={name} path={pagePath(name)} element={
-              ['Discover', 'Opportunities', 'Projects', 'Services', 'Grants', 'Hackathons', 'Bounties', 'Events'].includes(name)
-                ? <DirectoryPage name={name} />
-                : <GeneralPage name={name} />
-            } />
-          ))}
-          <Route element={<AuthGate roles={['member']} />}>
-            {MEMBER_PAGES.map((name) => <Route key={name} path={pagePath(name)} element={<MemberPage name={name} />} />)}
-          </Route>
-          <Route element={<AuthGate roles={['organization']} />}>
-            {ORG_PAGES.map((name) => <Route key={name} path={pagePath(name, 'organization')} element={<OrganizationPage name={name} />} />)}
-          </Route>
-          <Route element={<AuthGate roles={['admin']} />}>
-            {ADMIN_PAGES.map((name) => <Route key={name} path={pagePath(name, 'admin')} element={<AdminPage name={name} />} />)}
-          </Route>
-          <Route path="/forbidden" element={<ForbiddenPage />} />
-          <Route path="*" element={<NotFoundPage />} />
+          <Route path="/" element={<LandingPage />} />
         </Route>
-        {AUTH_PATHS.map((path) => <Route key={path} path={path} element={<AuthEntry path={path} />} />)}
+
+        <Route
+          element={
+            <RequireAuth>
+              <AppLayout />
+            </RequireAuth>
+          }
+        >
+          <Route path="/onboarding" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/dashboard" element={<HomePage />} />
+          <Route path="/home" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/missions" element={<MissionsPage />} />
+          <Route path="/missions/new" element={<MissionCreatePage />} />
+          <Route path="/missions/:id" element={<MissionDetailPage />} />
+          <Route path="/houses" element={<HousesPage />} />
+          <Route path="/houses/:slug" element={<HouseDetailPage />} />
+          <Route path="/explore" element={<ExplorePage />} />
+          <Route path="/academy" element={<AcademyPage />} />
+          <Route path="/events" element={<EventsPage />} />
+          <Route path="/leaderboards" element={<LeaderboardsPage />} />
+          <Route path="/activity" element={<ActivityPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/personalization" element={<PersonalizationPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/help" element={<HelpPage />} />
+          <Route
+            path="/organisations"
+            element={FEATURE_FLAGS.organisationsEnabled ? <OrganisationsPage /> : <Navigate to="/dashboard" replace />}
+          />
+          <Route path="/organisations/*" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/stewardship" element={<StewardshipPage />} />
+          <Route path="/control-room" element={<ControlRoomPage />} />
+          <Route path="/notifications" element={<NotificationsPage />} />
+
+          {/* Legacy route redirects */}
+          <Route path="/discover" element={<Navigate to="/explore?tab=opportunities" replace />} />
+          <Route path="/opportunities" element={<Navigate to="/missions" replace />} />
+          <Route path="/bounties" element={<Navigate to="/missions" replace />} />
+          <Route path="/grants" element={<Navigate to="/missions" replace />} />
+          <Route path="/hackathons" element={<Navigate to="/missions" replace />} />
+          <Route path="/projects" element={<Navigate to="/explore?tab=projects" replace />} />
+          <Route path="/services" element={<Navigate to="/explore?tab=services" replace />} />
+          <Route path="/communities" element={<Navigate to="/houses" replace />} />
+          <Route path="/learning" element={<Navigate to="/academy" replace />} />
+          <Route
+            path="/organizations"
+            element={<Navigate to={FEATURE_FLAGS.organisationsEnabled ? '/organisations' : '/dashboard'} replace />}
+          />
+          <Route
+            path="/organizations/*"
+            element={<Navigate to={FEATURE_FLAGS.organisationsEnabled ? '/organisations' : '/dashboard'} replace />}
+          />
+          <Route path="/resources" element={<Navigate to="/explore?tab=resources" replace />} />
+          <Route path="/discussions" element={<Navigate to="/explore?tab=discussions" replace />} />
+          <Route path="/applications" element={<Navigate to="/activity" replace />} />
+          <Route path="/achievements" element={<Navigate to="/activity?tab=progress" replace />} />
+          <Route path="/reputation" element={<Navigate to="/activity?tab=progress" replace />} />
+          <Route path="/admin" element={<Navigate to="/control-room" replace />} />
+          <Route path="/analytics" element={<Navigate to="/control-room" replace />} />
+          <Route path="/moderation" element={<Navigate to="/control-room" replace />} />
+          <Route path="/applicants" element={<Navigate to="/control-room" replace />} />
+        </Route>
+
+        <Route path="*" element={<NotFoundRoute />} />
       </Routes>
-    </AppStateProvider>
-    </AuthProvider>
+    </ArenaProvider>
   )
-}
-
-function AuthEntry({ path }: { path: string }) {
-  const { user } = useAuth()
-  if (path !== '/forgot-password' && user?.onboardingComplete) return <Navigate to={homeForRole(user.role)} replace />
-  if (path === '/onboarding' && !user) return <Navigate to="/login" replace state={{ from: { pathname: '/onboarding' } }} />
-  return <AuthPage path={path} />
-}
-
-function ForbiddenPage() {
-  const { user } = useAuth()
-  const navigate = useNavigate()
-  if (!user) return <Navigate to="/login" replace />
-  return <div className="not-found"><span className="section-kicker">ROLE-RESTRICTED AREA</span><h1>Not your<br /><span>workspace.</span></h1><p>This area is for another Arena role. You’re signed in as {user.role}.</p><button className="button button-bright" onClick={() => navigate(homeForRole(user.role), { replace: true })}>Go to your workspace</button></div>
 }

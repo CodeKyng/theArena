@@ -1,16 +1,45 @@
 import { ArrowRight, ArrowUpRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { popularTopics } from '../../data/listings'
+import { useArena } from '../../app/arenaContext'
 
 export default function CommunitySection() {
-  return <section className="builder-section section-wrap" id="community">
-    <div className="builder-intro"><div className="section-kicker">A PLACE TO BEGIN</div><h2>Not just a network.<br /><em>Your next chapter.</em></h2><p>Meet the people who get it. Find a project that needs you. Make something that matters.</p><Link className="button button-bright" to="/register">Find your people <ArrowRight size={16} /></Link></div>
-    <div className="topic-panel">
-      <div className="topic-panel-head"><div><span className="section-kicker">FIND YOUR CORNER</span><h3>What are you into?</h3></div><span className="topic-count">01 — 03</span></div>
-      {popularTopics.map((topic, index) => <Link to="/communities" className="topic-row" key={topic.title}>
-        <span className={`topic-icon ${topic.color}`}>{topic.icon}</span><span className="topic-name"><b>{topic.title}</b><small>{topic.count}</small></span>
-        <span className="topic-index">0{index + 1}</span><ArrowUpRight size={17} />
-      </Link>)}
-    </div>
-  </section>
+  const { state } = useArena()
+
+  return (
+    <section className="builder-section section-wrap" id="community">
+      <div className="builder-intro">
+        <div className="section-kicker">THE SIX HOUSES</div>
+        <h2>Find your craft.<br /><em>Grow with your House.</em></h2>
+        <p>
+          Choose a Primary House—and an optional Secondary House—to focus your work, from engineering in Forge Masters to research in Seers and outreach in Echoes.
+        </p>
+        <Link className="button button-bright" to="/houses">
+          Explore all 6 Houses <ArrowRight size={16} />
+        </Link>
+      </div>
+
+      <div className="topic-panel">
+        <div className="topic-panel-head">
+          <div>
+            <span className="section-kicker">THE ARENA HOUSES</span>
+            <h3>Disciplines &amp; craft</h3>
+          </div>
+          <span className="topic-count">01 — 06</span>
+        </div>
+        {state.houses.map((house, index) => (
+          <Link to={`/houses/${house.slug}`} className="topic-row" key={house.id}>
+            <span className={`topic-icon ${house.tone === 'red' ? 'red' : house.tone === 'slate' ? 'purple' : 'blue'}`}>
+              {house.glyph}
+            </span>
+            <span className="topic-name">
+              <b>House {house.name}</b>
+              <small>{house.tagline}</small>
+            </span>
+            <span className="topic-index">0{index + 1}</span>
+            <ArrowUpRight size={17} />
+          </Link>
+        ))}
+      </div>
+    </section>
+  )
 }
