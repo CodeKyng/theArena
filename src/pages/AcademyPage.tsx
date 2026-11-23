@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { AlertCircle, ArrowRight, BookOpen, CheckCircle2, GraduationCap, HelpCircle } from 'lucide-react'
 import { useArena } from '../app/arenaContext'
-import PageScaffold from '../components/PageScaffold'
+import { getHouseName } from '../domain/constants'
 
 export default function AcademyPage() {
   const { state, currentMember, completeLesson, submitAssessment } = useArena()
@@ -22,35 +22,40 @@ export default function AcademyPage() {
     (p) => trackFilter === 'all' || p.track === trackFilter,
   )
 
+  const handleExplorePaths = () => {
+    setTab('paths')
+    setTrackFilter('all')
+    const target = document.getElementById('academy-paths')
+    if (target && typeof target.scrollIntoView === 'function') {
+      target.scrollIntoView({ behavior: 'smooth' })
+    }
+  }
+
   return (
-    <PageScaffold
-      section="ARENA ACADEMY · STRUCTURED LEARNING"
-      name="Arena Academy"
-      description="Complete interactive lessons (+5 XP, +1 CP), finish modules (+20 XP, +5 CP), unlock full learning paths (+75 XP, +15 CP), and pass practical assessments."
-    >
+    <div className="inner-page">
       <div className="learning-experience" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <section className="learning-hero">
           <div>
-            <span className="section-kicker">LEARN IT. BUILD IT. PASS IT ON.</span>
+            <span className="section-kicker">ARENA ACADEMY</span>
             <h2>
-              Build your next
+              Learn something.
               <br />
-              <em>superpower.</em>
+              <em>Put it into practice.</em>
             </h2>
             <p>
-              Skill tracks designed for Spartans turning foundational Web3 knowledge into verified Proof-of-Work deliverables.
+              Complete lessons (+5 XP, +1 CP), modules (+20 XP, +5 CP), learning paths (+75 XP, +15 CP), and practical assessments as you build skills for real missions.
             </p>
             <button
               type="button"
               className="button button-bright"
-              onClick={() => setTab('paths')}
+              onClick={handleExplorePaths}
             >
               Explore learning paths <ArrowRight size={15} />
             </button>
           </div>
           <div className="learning-hero-card">
             <span className="course-index">LEARNING PATH 01</span>
-            <div className="course-glyph">λ</div>
+            <div className="course-glyph"><GraduationCap size={36} strokeWidth={1.75} aria-hidden="true" /></div>
             <span className="course-label">ARENA FOUNDATIONS</span>
             <b>
               From first lesson
@@ -66,7 +71,7 @@ export default function AcademyPage() {
         <div className="arena-notice arena-notice-warn">
           <AlertCircle size={17} />
           <span>
-            <b>Demo / Placeholder Learning Catalogue:</b> These courses illustrate the canonical Academy flow (lessons, knowledge checks, module/path auto-progression, practical assessments, and glossary). Final curriculum content awaits product owner approval.
+            <b>Sample curriculum (Demo Mode):</b> These paths demonstrate Arena lessons, knowledge checks, and practical assessments. Final curriculum courses will replace these samples.
           </span>
         </div>
 
@@ -98,7 +103,7 @@ export default function AcademyPage() {
             ))}
           </div>
         ) : (
-          <>
+          <div id="academy-paths" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {['all', 'Web3 Foundations', 'Wallet & Digital Safety', 'House Mastery'].map((tr) => (
                 <button
@@ -124,7 +129,7 @@ export default function AcademyPage() {
                       <div>
                         <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4, flexWrap: 'wrap' }}>
                           <span className="listing-kind">{path.track}</span>
-                          {path.houseId && <span className="tag">House {path.houseId}</span>}
+                          {path.houseId && <span className="tag">House {getHouseName(path.houseId, state.houses)}</span>}
                           {pathDone && (
                             <span className="listing-kind kind-success">
                               <CheckCircle2 size={12} /> Path Completed
@@ -251,9 +256,9 @@ export default function AcademyPage() {
                 )
               })}
             </div>
-          </>
+          </div>
         )}
       </div>
-    </PageScaffold>
+    </div>
   )
 }

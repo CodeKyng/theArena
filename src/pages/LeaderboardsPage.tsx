@@ -138,7 +138,7 @@ export default function LeaderboardsPage() {
 
         <div className="rank-list">
           {entries.length === 0 ? (
-            <div style={{ padding: 28, textAlign: 'center', color: 'var(--arena-ink-muted)' }}>
+            <div style={{ padding: 28, textAlign: 'center', color: 'var(--arena-muted)' }}>
               No ranked contributions match this filter yet.
             </div>
           ) : (

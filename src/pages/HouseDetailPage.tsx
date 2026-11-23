@@ -6,6 +6,7 @@ import ListingCard from '../components/ListingCard'
 import PageScaffold from '../components/PageScaffold'
 import PermissionGate from '../components/PermissionGate'
 import StatCard from '../components/StatCard'
+import { formatMissionStatus } from '../domain/constants'
 
 type HouseTab = 'overview' | 'activity' | 'missions' | 'academy' | 'members' | 'about' | 'management'
 
@@ -21,11 +22,11 @@ export default function HouseDetailPage() {
       <PageScaffold
         section="Arena Houses"
         name="House Not Found"
-        description="Select one of the six canonical Arena Houses."
+        description="Select one of the six Arena Houses."
       >
         <div className="empty-state">
           <h3>House not found</h3>
-          <p>Select one of the six canonical Arena Houses.</p>
+          <p>Select one of the six Arena Houses.</p>
           <Link className="button button-bright" to="/houses">All Houses</Link>
         </div>
       </PageScaffold>
@@ -37,28 +38,31 @@ export default function HouseDetailPage() {
     (m) => m.houseId === house.id || (house.id === 'echoes' && m.crossHouseEligible),
   )
   const houseMembers = state.members.filter(
-    (m) => m.primaryHouseId === house.id || m.secondaryHouseId === house.id,
+    (m) =>
+      (m.primaryHouseId === house.id || m.secondaryHouseId === house.id) &&
+      (m.privacy.publicProfileVisible || m.id === currentMember?.id),
   )
   const houseAcademy = state.academyPaths.filter(
     (p) => p.houseId === house.id || p.modules.some((mod) => mod.houseId === house.id),
   )
-  const houseContributions = state.contributionRecords.filter((cr) => cr.houseId === house.id)
+  const houseContributions = state.contributionRecords.filter((cr) => {
+    if (cr.houseId !== house.id) return false
+    const author = state.members.find((m) => m.id === cr.memberId)
+    return author ? author.privacy.showContributionsPublicly : true
+  })
   const houseSubmissions = state.submissions.filter((sub) =>
     houseMissions.some((m) => m.id === sub.missionId),
   )
 
   return (
-    <PageScaffold
-      section="Arena Houses"
-      name={`House ${house.name}`}
-      description={house.tagline}
-      actions={
-        <Link className="button button-quiet button-small" to="/houses">
-          <ArrowLeft size={14} /> All 6 Houses
-        </Link>
-      }
-    >
-      <div className="community-experience">
+    <div className="inner-page">
+      <div className="community-experience" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Link className="button button-quiet button-small" to="/houses">
+            <ArrowLeft size={14} /> All 6 Houses
+          </Link>
+        </div>
+
         <section className="community-banner">
           <div className="community-banner-art" aria-hidden="true">
             <span>{house.glyph}</span>
@@ -67,7 +71,7 @@ export default function HouseDetailPage() {
           </div>
           <div>
             <span className="section-kicker">
-              {house.supportsCrossHouseOutreach ? 'CANONICAL HOUSE + CROSS-HOUSE CAPABILITY' : 'CANONICAL ARENA HOUSE'}
+              {house.supportsCrossHouseOutreach ? 'CANONICAL HOUSE + CROSS-HOUSE CAPABILITY' : 'ARENA HOUSE'}
             </span>
             <h2>House {house.name}</h2>
             <p>{house.description}</p>
@@ -79,7 +83,7 @@ export default function HouseDetailPage() {
                   onClick={() => updateHouses(house.id, currentMember.secondaryHouseId === house.id ? null : currentMember.secondaryHouseId)}
                   disabled={currentMember.primaryHouseId === house.id}
                 >
-                  {currentMember.primaryHouseId === house.id ? 'Primary House' : 'Set as Primary (0 XP)'}
+                  {currentMember.primaryHouseId === house.id ? 'Primary House' : 'Set as Primary'}
                 </button>
                 <button
                   type="button"
@@ -100,7 +104,7 @@ export default function HouseDetailPage() {
             <b>{String(houseMissions.length).padStart(2, '0')}</b>
             <small>MISSIONS</small>
             <b>{String(houseMembers.length).padStart(2, '0')}</b>
-            <small>SPARTANS</small>
+            <small>MEMBERS</small>
           </div>
         </section>
 
@@ -135,7 +139,7 @@ export default function HouseDetailPage() {
               className={`arena-tab ${tab === 'management' ? 'active' : ''}`}
               onClick={() => setTab('management')}
             >
-              <Shield size={14} /> House Management (Scoped)
+              <Shield size={14} /> House Management
             </button>
           )}
         </div>
@@ -144,7 +148,7 @@ export default function HouseDetailPage() {
           <div className="dashboard-columns">
             <div className="dashboard-panel">
               <div className="panel-title">
-                <h2>Focus Areas &amp; Stewardship Standard</h2>
+                <h2>Focus Areas &amp; Review Standards</h2>
               </div>
               <div className="tag-row" style={{ marginBottom: 14 }}>
                 {house.focusAreas.map((fa) => (
@@ -166,13 +170,13 @@ export default function HouseDetailPage() {
                 <StatCard
                   label="Active Missions"
                   value={String(houseMissions.filter((m) => m.status === 'active').length)}
-                  change="Verified Proof-of-Work deliverables"
+                  change="Open Proof-of-Work deliverables"
                   icon={<Target size={15} />}
                 />
                 <StatCard
                   label="Verified Contributions"
                   value={String(houseContributions.length)}
-                  change="Permanent House records"
+                  change="Approved House records"
                   icon={<Users size={15} />}
                 />
               </div>
@@ -184,17 +188,17 @@ export default function HouseDetailPage() {
           <div className="dashboard-panel">
             <div className="panel-title"><h2>House Contribution Feed</h2></div>
             {houseContributions.length === 0 ? (
-              <p style={{ color: 'var(--arena-ink-muted)', margin: 0 }}>No verified contributions logged in this House yet.</p>
+              <p style={{ color: 'var(--arena-muted)', margin: 0 }}>No verified contributions logged in this House yet.</p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {houseContributions.map((cr) => {
                   const member = state.members.find((m) => m.id === cr.memberId)
                   return (
-                    <div key={cr.id} style={{ padding: 12, border: '1px solid var(--arena-border)', borderRadius: 8 }}>
+                    <div key={cr.id} style={{ padding: 12, border: '1px solid var(--arena-line)', borderRadius: 8 }}>
                       <div style={{ fontSize: 13.5 }}>
                         <b>{member?.displayName}</b> · {cr.title}
                       </div>
-                      <div style={{ fontSize: 12.5, color: 'var(--arena-ink-muted)', marginTop: 3 }}>{cr.deliverableSummary}</div>
+                      <div style={{ fontSize: 12.5, color: 'var(--arena-muted)', marginTop: 3 }}>{cr.deliverableSummary}</div>
                     </div>
                   )
                 })}
@@ -210,7 +214,7 @@ export default function HouseDetailPage() {
                 key={m.id}
                 glyph={house.glyph}
                 tone="blue"
-                kind={m.status}
+                kind={formatMissionStatus(m.status)}
                 kindTone={m.status === 'active' ? 'success' : 'default'}
                 secondaryBadge={m.crossHouseEligible ? 'Cross-House' : undefined}
                 meta={m.category}
@@ -229,7 +233,7 @@ export default function HouseDetailPage() {
           <div className="arena-grid-2">
             {houseAcademy.length === 0 ? (
               <div className="dashboard-panel">
-                <p style={{ margin: 0, color: 'var(--arena-ink-muted)' }}>
+                <p style={{ margin: 0, color: 'var(--arena-muted)' }}>
                   House-specific modules are complemented by Web3 Foundations &amp; Safety paths in the{' '}
                   <Link className="text-link" to="/academy">Arena Academy</Link>.
                 </p>
@@ -242,7 +246,7 @@ export default function HouseDetailPage() {
                     <span className="tag">{p.track}</span>
                   </div>
                   <h3 style={{ margin: '0 0 6px' }}>{p.title}</h3>
-                  <p style={{ margin: '0 0 12px', fontSize: 13.5, color: 'var(--arena-ink-muted)' }}>{p.subtitle}</p>
+                  <p style={{ margin: '0 0 12px', fontSize: 13.5, color: 'var(--arena-muted)' }}>{p.subtitle}</p>
                   <Link className="button button-bright button-small" to="/academy">Open Path in Academy</Link>
                 </div>
               ))
@@ -257,7 +261,7 @@ export default function HouseDetailPage() {
                 <span className="avatar avatar-small" style={{ width: 42, height: 42, fontSize: 13 }}>{m.avatarInitials}</span>
                 <div>
                   <div style={{ fontWeight: 700 }}>{m.displayName}</div>
-                  <div style={{ fontSize: 12, color: 'var(--arena-ink-muted)' }}>
+                  <div style={{ fontSize: 12, color: 'var(--arena-muted)' }}>
                     {m.ascendancyRank} · {m.primaryHouseId === house.id ? 'Primary' : 'Secondary'}
                   </div>
                 </div>
@@ -274,7 +278,7 @@ export default function HouseDetailPage() {
               <div className="arena-notice arena-notice-warn">
                 <AlertTriangle size={16} />
                 <span>
-                  <b>Anti-Engagement-Farming Policy:</b> House Echoes strictly prohibits buying likes, reposts, follows, or raw impression counts. All outreach missions verify substance and alignment.
+                  <b>Anti-Engagement-Farming Policy:</b> House Echoes prohibits buying likes, reposts, follows, or raw impression counts. All outreach missions verify substance and alignment.
                 </span>
               </div>
             )}
@@ -286,12 +290,12 @@ export default function HouseDetailPage() {
             <div className="dashboard-panel">
               <div className="panel-title">
                 <div>
-                  <span className="section-kicker">HOUSE-SCOPED STRATEGOS WORKSPACE</span>
+                  <span className="section-kicker">HOUSE STEWARDSHIP</span>
                   <h2>Manage House {house.name}</h2>
                 </div>
               </div>
-              <p style={{ fontSize: 13, color: 'var(--arena-ink-muted)', marginTop: 0 }}>
-                Permission check verified: you hold scoped <code>house.manage</code> authority strictly for <b>House {house.name}</b>. You cannot manage other Houses unless explicitly granted scope.
+              <p style={{ fontSize: 13, color: 'var(--arena-muted)', marginTop: 0 }}>
+                Your Manage House permission is scoped strictly to <b>House {house.name}</b>.
               </p>
               <div className="arena-table-wrap">
                 <table className="arena-table">
@@ -307,7 +311,7 @@ export default function HouseDetailPage() {
                     {houseMissions.filter((m) => m.houseId === house.id).map((m) => (
                       <tr key={m.id}>
                         <td><Link className="text-link" to={`/missions/${m.id}`}>{m.title}</Link></td>
-                        <td><span className="listing-kind">{m.status}</span></td>
+                        <td><span className="listing-kind">{formatMissionStatus(m.status)}</span></td>
                         <td>{m.budget.remainingReservedXp} XP</td>
                         <td>
                           <div style={{ display: 'flex', gap: 6 }}>
@@ -334,6 +338,6 @@ export default function HouseDetailPage() {
           </PermissionGate>
         )}
       </div>
-    </PageScaffold>
+    </div>
   )
 }

@@ -1,5 +1,7 @@
+import { DISCUSSION_UNLOCK_LEVEL } from '../domain/constants'
 import {
   calculateEligibleCp,
+  calculateLevelProgress,
   classifyMissionBand,
   createXpLedgerTransaction,
   deriveXpBalance,
@@ -85,7 +87,16 @@ function notifyMember(
   title: string,
   body: string,
   linkPath?: string,
+  options?: { isMissionAlert?: boolean },
 ): ArenaPrototypeState {
+  const isMissionRelated =
+    options?.isMissionAlert ?? (category === 'mission' || category === 'submission')
+  if (isMissionRelated) {
+    const recipient = state.members.find((m) => m.id === memberId)
+    if (recipient && !recipient.privacy.missionAlerts) {
+      return state
+    }
+  }
   return {
     ...state,
     notifications: [
@@ -162,36 +173,64 @@ export function getMember(state: ArenaPrototypeState, memberId: string | null): 
   return state.members.find((m) => m.id === memberId) ?? null
 }
 
+export function isSpartanMember(member: MemberProfile | null | undefined): member is MemberProfile {
+  return Boolean(member && member.membershipStatus === 'spartan')
+}
+
+export function getAuthenticatedMember(state: ArenaPrototypeState, memberId: string | null): MemberProfile | null {
+  const member = getMember(state, memberId)
+  return isSpartanMember(member) ? member : null
+}
+
+function requireSpartanMember(
+  state: ArenaPrototypeState,
+  memberId: string | null | undefined,
+  errorMessage = 'Sign in as a Spartan to continue.',
+): { ok: true; member: MemberProfile } | { ok: false; error: string } {
+  const member = getAuthenticatedMember(state, memberId ?? null)
+  if (!member) {
+    return { ok: false, error: errorMessage }
+  }
+  return { ok: true, member }
+}
+
 // ---------------------------------------------------------------------------
 // 1. Auth, Unified Registration & New Spartan Onboarding
 // ---------------------------------------------------------------------------
 
-export function switchDemoPersona(state: ArenaPrototypeState, memberId: string | null): ServiceResult<MemberProfile | null> {
-  if (memberId === null) {
+export function switchDemoPersona(state: ArenaPrototypeState, memberId: string | null): ServiceResult<MemberProfile> {
+  const actorCheck = requireSpartanMember(
+    state,
+    state.currentMemberId,
+    'Sign in as a Spartan before switching demo accounts.',
+  )
+  if (!actorCheck.ok) return actorCheck
+
+  if (!memberId) {
     return {
-      ok: true,
-      state: { ...state, currentMemberId: null, activeOrganisationId: null },
-      data: null,
-      message: 'Switched to Visitor (Public) view.',
+      ok: false,
+      error: 'Visitor mode is not a valid authenticated workspace account. Use Log out instead.',
     }
   }
-  const member = state.members.find((m) => m.id === memberId)
-  if (!member) return { ok: false, error: 'Demo persona not found.' }
+
+  const targetCheck = requireSpartanMember(state, memberId, 'Demo persona must be a valid Spartan account.')
+  if (!targetCheck.ok) return targetCheck
+
   return {
     ok: true,
-    state: { ...state, currentMemberId: member.id, activeOrganisationId: null },
-    data: member,
-    message: `Switched demo view to ${member.displayName} (${member.ascendancyRank}).`,
+    state: { ...state, currentMemberId: targetCheck.member.id, activeOrganisationId: null },
+    data: targetCheck.member,
+    message: `Switched demo view to ${targetCheck.member.displayName} (${targetCheck.member.ascendancyRank}).`,
   }
 }
 
 export function signInDemoByEmail(state: ArenaPrototypeState, email: string): ServiceResult<MemberProfile> {
   const normalized = email.trim().toLowerCase()
   const member = state.members.find((m) => m.email.toLowerCase() === normalized)
-  if (!member) {
+  if (!member || member.membershipStatus !== 'spartan') {
     return {
       ok: false,
-      error: 'No simulated account matches that email. Use a seeded @arena.demo address or register a new unified Arena account.',
+      error: 'No Spartan account matches that email. Use a seeded @arena.demo address or register a new unified Arena account.',
     }
   }
   return {
@@ -263,7 +302,7 @@ export function registerUnifiedAccount(
     'announcement',
     'Welcome to The Arena',
     'Your unified Spartan account is ready. Complete Orientation (+20 XP) and select your Houses to begin.',
-    '/home',
+    '/dashboard',
   )
   next = appendAudit(next, newMember.id, 'account.registered', 'member', newMember.id, `Registered unified Spartan account @${username}.`)
 
@@ -280,13 +319,25 @@ export function signOutAccount(state: ArenaPrototypeState): ServiceResult<null> 
     ok: true,
     state: { ...state, currentMemberId: null, activeOrganisationId: null },
     data: null,
-    message: 'Signed out to Visitor view.',
+    message: 'Signed out.',
   }
 }
 
+export function isOnboardingComplete(checklist: MemberProfile['onboardingChecklist']): boolean {
+  return Boolean(
+    checklist.orientationCompleted &&
+      checklist.rulesChecked &&
+      checklist.housesSelected &&
+      checklist.profileGuided &&
+      checklist.academyStarted &&
+      checklist.introMissionJoined,
+  )
+}
+
 export function completeOrientationAndRules(state: ArenaPrototypeState, memberId: string): ServiceResult<{ awardedXp: number }> {
-  const member = state.members.find((m) => m.id === memberId)
-  if (!member) return { ok: false, error: 'Member not found.' }
+  const memberCheck = requireSpartanMember(state, memberId, 'Sign in as a Spartan to complete orientation.')
+  if (!memberCheck.ok) return memberCheck
+  const member = memberCheck.member
 
   const orientationXp = state.config.systemXpValues.orientationOnce
   const ledgerRes = createXpLedgerTransaction(state.xpTransactions, {
@@ -302,14 +353,15 @@ export function completeOrientationAndRules(state: ArenaPrototypeState, memberId
   })
   if (!ledgerRes.ok) return ledgerRes
 
+  const nextChecklist: MemberProfile['onboardingChecklist'] = {
+    ...member.onboardingChecklist,
+    orientationCompleted: true,
+    rulesChecked: true,
+  }
   const updatedMember: MemberProfile = {
     ...member,
-    onboardingChecklist: {
-      ...member.onboardingChecklist,
-      orientationCompleted: true,
-      rulesChecked: true,
-    },
-    onboardingStage: member.primaryHouseId ? 'completed' : member.onboardingStage,
+    onboardingChecklist: nextChecklist,
+    onboardingStage: isOnboardingComplete(nextChecklist) ? 'completed' : member.onboardingStage,
   }
 
   let next: ArenaPrototypeState = {
@@ -346,8 +398,9 @@ export function updateMemberHouses(
   primaryHouseId: HouseId | null,
   secondaryHouseId: HouseId | null,
 ): ServiceResult<MemberProfile> {
-  const member = state.members.find((m) => m.id === memberId)
-  if (!member) return { ok: false, error: 'Member not found.' }
+  const memberCheck = requireSpartanMember(state, memberId, 'Sign in as a Spartan to update Houses.')
+  if (!memberCheck.ok) return memberCheck
+  const member = memberCheck.member
   if (primaryHouseId && secondaryHouseId && primaryHouseId === secondaryHouseId) {
     return { ok: false, error: 'Primary and Secondary Houses must be different.' }
   }
@@ -355,21 +408,17 @@ export function updateMemberHouses(
     return { ok: false, error: 'Choose a Primary House before selecting a Secondary House.' }
   }
 
-  const readyToGraduate = Boolean(
-    primaryHouseId &&
-    member.onboardingChecklist.orientationCompleted &&
-    member.onboardingChecklist.rulesChecked,
-  )
+  const nextChecklist: MemberProfile['onboardingChecklist'] = {
+    ...member.onboardingChecklist,
+    housesSelected: Boolean(primaryHouseId),
+  }
 
   const updated: MemberProfile = {
     ...member,
     primaryHouseId,
     secondaryHouseId,
-    onboardingChecklist: {
-      ...member.onboardingChecklist,
-      housesSelected: Boolean(primaryHouseId),
-    },
-    onboardingStage: readyToGraduate ? 'completed' : member.onboardingStage,
+    onboardingChecklist: nextChecklist,
+    onboardingStage: isOnboardingComplete(nextChecklist) ? 'completed' : member.onboardingStage,
   }
 
   let next: ArenaPrototypeState = {
@@ -398,19 +447,22 @@ export function updateMemberProfile(
   memberId: string,
   patch: Partial<Pick<MemberProfile, 'displayName' | 'headline' | 'bio' | 'publicLinks' | 'skills' | 'interests'>>,
 ): ServiceResult<MemberProfile> {
-  const member = state.members.find((m) => m.id === memberId)
-  if (!member) return { ok: false, error: 'Member not found.' }
+  const memberCheck = requireSpartanMember(state, memberId, 'Sign in as a Spartan to update your profile.')
+  if (!memberCheck.ok) return memberCheck
+  const member = memberCheck.member
 
   const displayName = patch.displayName?.trim() || member.displayName
+  const nextChecklist: MemberProfile['onboardingChecklist'] = {
+    ...member.onboardingChecklist,
+    profileGuided: Boolean((patch.bio !== undefined ? patch.bio : member.bio).trim()),
+  }
   const updated: MemberProfile = {
     ...member,
     ...patch,
     displayName,
     avatarInitials: makeInitials(displayName),
-    onboardingChecklist: {
-      ...member.onboardingChecklist,
-      profileGuided: Boolean(patch.bio?.trim() || member.bio.trim()),
-    },
+    onboardingChecklist: nextChecklist,
+    onboardingStage: isOnboardingComplete(nextChecklist) ? 'completed' : member.onboardingStage,
   }
 
   return {
@@ -429,8 +481,9 @@ export function updateAccountPrivacy(
   memberId: string,
   privacyPatch: Partial<MemberProfile['privacy']>,
 ): ServiceResult<MemberProfile> {
-  const member = state.members.find((m) => m.id === memberId)
-  if (!member) return { ok: false, error: 'Member not found.' }
+  const memberCheck = requireSpartanMember(state, memberId, 'Sign in as a Spartan to update settings.')
+  if (!memberCheck.ok) return memberCheck
+  const member = memberCheck.member
 
   const updated: MemberProfile = {
     ...member,
@@ -460,8 +513,8 @@ export function createOrganisation(
     website: string
   },
 ): ServiceResult<OrganisationProfile> {
-  const member = state.members.find((m) => m.id === memberId)
-  if (!member) return { ok: false, error: 'Sign in first to create an organisation profile.' }
+  const memberCheck = requireSpartanMember(state, memberId, 'Sign in as a Spartan to create an organisation profile.')
+  if (!memberCheck.ok) return memberCheck
   if (!input.name.trim()) return { ok: false, error: 'Organisation name is required.' }
 
   const slug = input.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
@@ -512,6 +565,8 @@ export function setOrganisationVerification(
   organisationId: string,
   status: OrganisationProfile['verificationStatus'],
 ): ServiceResult<OrganisationProfile> {
+  const actorCheck = requireSpartanMember(state, actorId)
+  if (!actorCheck.ok) return actorCheck
   if (!memberHasPermission(actorId, state.permissionGrants, 'platform.admin')) {
     return { ok: false, error: 'Only Control Room Admins can change organisation verification status.' }
   }
@@ -526,12 +581,40 @@ export function setOrganisationVerification(
   return { ok: true, state: next, data: updated, message: `${org.name} marked ${status.replace('_', ' ')}.` }
 }
 
-export function switchActiveOrganisation(state: ArenaPrototypeState, organisationId: string | null): ServiceResult<null> {
+export function switchActiveOrganisation(
+  state: ArenaPrototypeState,
+  organisationId: string | null,
+  actorMemberId: string | null = state.currentMemberId,
+): ServiceResult<null> {
+  const actorCheck = requireSpartanMember(state, actorMemberId, 'Sign in as a Spartan to switch organisation context.')
+  if (!actorCheck.ok) return actorCheck
+
+  if (organisationId === null) {
+    return {
+      ok: true,
+      state: { ...state, activeOrganisationId: null },
+      data: null,
+      message: 'Switched to Personal Spartan context.',
+    }
+  }
+
+  const org = state.organisations.find((o) => o.id === organisationId)
+  if (!org) return { ok: false, error: 'Organisation not found.' }
+
+  const isMemberOrOwner =
+    org.ownerMemberId === actorCheck.member.id ||
+    state.organisationMemberships.some(
+      (om) => om.organisationId === org.id && om.memberId === actorCheck.member.id,
+    )
+  if (!isMemberOrOwner) {
+    return { ok: false, error: 'You do not belong to this organisation.' }
+  }
+
   return {
     ok: true,
     state: { ...state, activeOrganisationId: organisationId },
     data: null,
-    message: organisationId ? 'Switched workspace context to Organisation.' : 'Switched to Personal Spartan context.',
+    message: 'Switched workspace context to Organisation.',
   }
 }
 
@@ -570,8 +653,8 @@ export interface CreateMissionInput {
 }
 
 export function createMission(state: ArenaPrototypeState, creatorId: string, input: CreateMissionInput): ServiceResult<Mission> {
-  const creator = state.members.find((m) => m.id === creatorId)
-  if (!creator) return { ok: false, error: 'Sign in to create a mission.' }
+  const creatorCheck = requireSpartanMember(state, creatorId, 'Sign in as a Spartan to create a mission.')
+  if (!creatorCheck.ok) return creatorCheck
   if (!memberHasPermission(creatorId, state.permissionGrants, 'mission.create')) {
     return { ok: false, error: 'Your account does not currently have Mission Creator permission. Request it in Control Room or switch to Jordan Davis / Maya Kim.' }
   }
@@ -592,6 +675,13 @@ export function createMission(state: ArenaPrototypeState, creatorId: string, inp
 
   const rewardXp = input.isFunded ? Math.max(0, Math.round(input.rewardPerContributorXp)) : 0
   const maxContributors = Math.max(1, Math.round(input.maxContributors))
+  const capacity = Math.round(input.capacity)
+  if (capacity < 1) {
+    return { ok: false, error: 'Participant capacity must be at least 1.' }
+  }
+  if (input.isFunded && maxContributors > capacity) {
+    return { ok: false, error: 'Participant capacity must be greater than or equal to max rewarded contributors.' }
+  }
   if (input.isFunded && rewardXp <= 0) {
     return { ok: false, error: 'Funded missions require a positive XP reward per contributor.' }
   }
@@ -649,7 +739,7 @@ export function createMission(state: ArenaPrototypeState, creatorId: string, inp
     participationFormat: input.participationFormat,
     participationOpen: status === 'active',
     eligibilityNote: input.eligibilityNote.trim() || 'Open to eligible Arena Spartans.',
-    capacity: Math.max(maxContributors, Math.round(input.capacity)),
+    capacity,
     difficulty: input.difficulty,
     platformContext: input.platformContext.trim() || 'GitHub / Docs',
     locationContext: input.locationContext.trim() || 'Remote',
@@ -717,6 +807,8 @@ export function createMission(state: ArenaPrototypeState, creatorId: string, inp
 }
 
 export function publishDraftMission(state: ArenaPrototypeState, actorId: string, missionId: string): ServiceResult<Mission> {
+  const actorCheck = requireSpartanMember(state, actorId)
+  if (!actorCheck.ok) return actorCheck
   const mission = state.missions.find((m) => m.id === missionId)
   if (!mission) return { ok: false, error: 'Mission not found.' }
   if (mission.status !== 'draft') return { ok: false, error: 'Only draft missions can be published.' }
@@ -779,6 +871,8 @@ export function publishDraftMission(state: ArenaPrototypeState, actorId: string,
 }
 
 export function approveHighValueMission(state: ArenaPrototypeState, adminId: string, missionId: string): ServiceResult<Mission> {
+  const adminCheck = requireSpartanMember(state, adminId)
+  if (!adminCheck.ok) return adminCheck
   if (!memberHasPermission(adminId, state.permissionGrants, 'platform.admin') && !memberHasPermission(adminId, state.permissionGrants, 'finance.admin')) {
     return { ok: false, error: 'Only Control Room Admins can approve >1,500 XP missions.' }
   }
@@ -802,6 +896,8 @@ export function approveHighValueMission(state: ArenaPrototypeState, adminId: str
 }
 
 export function toggleMissionPause(state: ArenaPrototypeState, actorId: string, missionId: string): ServiceResult<Mission> {
+  const actorCheck = requireSpartanMember(state, actorId)
+  if (!actorCheck.ok) return actorCheck
   const mission = state.missions.find((m) => m.id === missionId)
   if (!mission) return { ok: false, error: 'Mission not found.' }
   const canManage =
@@ -834,6 +930,8 @@ export function cancelOrExpireMission(
   missionId: string,
   targetStatus: 'cancelled' | 'expired',
 ): ServiceResult<{ mission: Mission; refundedXp: number }> {
+  const actorCheck = requireSpartanMember(state, actorId)
+  if (!actorCheck.ok) return actorCheck
   const mission = state.missions.find((m) => m.id === missionId)
   if (!mission) return { ok: false, error: 'Mission not found.' }
   const canManage =
@@ -893,6 +991,7 @@ export function cancelOrExpireMission(
       `+${refundedAmount} Spendable XP Refunded`,
       `Unallocated escrow from ${targetStatus} mission "${mission.title}" returned to your Spendable XP.`,
       '/activity',
+      { isMissionAlert: true },
     )
   }
   next = appendAudit(
@@ -921,8 +1020,9 @@ export function joinOrApplyMission(
   applicationNote?: string,
   teamName?: string,
 ): ServiceResult<MissionParticipation> {
-  const member = state.members.find((m) => m.id === memberId)
-  if (!member) return { ok: false, error: 'Sign in as a Spartan to join missions.' }
+  const memberCheck = requireSpartanMember(state, memberId, 'Sign in as a Spartan to join missions.')
+  if (!memberCheck.ok) return memberCheck
+  const member = memberCheck.member
   const mission = state.missions.find((m) => m.id === missionId)
   if (!mission) return { ok: false, error: 'Mission not found.' }
   if (mission.status !== 'active' || !mission.participationOpen) {
@@ -952,11 +1052,15 @@ export function joinOrApplyMission(
   }
 
   const updatedMembers = missionId === 'mis-intro'
-    ? state.members.map((m) =>
-        m.id === memberId
-          ? { ...m, onboardingChecklist: { ...m.onboardingChecklist, introMissionJoined: true } }
-          : m,
-      )
+    ? state.members.map((m) => {
+        if (m.id !== memberId) return m
+        const nextChecklist = { ...m.onboardingChecklist, introMissionJoined: true }
+        return {
+          ...m,
+          onboardingChecklist: nextChecklist,
+          onboardingStage: isOnboardingComplete(nextChecklist) ? 'completed' : m.onboardingStage,
+        }
+      })
     : state.members
 
   let next: ArenaPrototypeState = {
@@ -989,6 +1093,8 @@ export function decideMissionApplication(
   participationId: string,
   decision: 'accepted' | 'declined',
 ): ServiceResult<MissionParticipation> {
+  const reviewerCheck = requireSpartanMember(state, reviewerId)
+  if (!reviewerCheck.ok) return reviewerCheck
   const part = state.missionParticipations.find((p) => p.id === participationId)
   if (!part) return { ok: false, error: 'Application not found.' }
   const mission = state.missions.find((m) => m.id === part.missionId)
@@ -1033,8 +1139,9 @@ export function submitMissionWork(
   summary: string,
   evidenceItems: EvidenceItem[],
 ): ServiceResult<MissionSubmission> {
-  const member = state.members.find((m) => m.id === memberId)
-  if (!member) return { ok: false, error: 'Sign in to submit Proof of Work.' }
+  const memberCheck = requireSpartanMember(state, memberId, 'Sign in as a Spartan to submit Proof of Work.')
+  if (!memberCheck.ok) return memberCheck
+  const member = memberCheck.member
   const mission = state.missions.find((m) => m.id === missionId)
   if (!mission) return { ok: false, error: 'Mission not found.' }
   if (mission.status !== 'active') return { ok: false, error: 'Submissions are only accepted while a mission is Active.' }
@@ -1084,11 +1191,15 @@ export function submitMissionWork(
     submissions: [submission, ...next.submissions],
     members:
       missionId === 'mis-intro'
-        ? next.members.map((m) =>
-            m.id === memberId
-              ? { ...m, onboardingChecklist: { ...m.onboardingChecklist, introMissionJoined: true } }
-              : m,
-          )
+        ? next.members.map((m) => {
+            if (m.id !== memberId) return m
+            const nextChecklist = { ...m.onboardingChecklist, introMissionJoined: true }
+            return {
+              ...m,
+              onboardingChecklist: nextChecklist,
+              onboardingStage: isOnboardingComplete(nextChecklist) ? 'completed' : m.onboardingStage,
+            }
+          })
         : next.members,
   }
 
@@ -1120,6 +1231,8 @@ export function resubmitMissionWork(
   summary: string,
   evidenceItems: EvidenceItem[],
 ): ServiceResult<MissionSubmission> {
+  const memberCheck = requireSpartanMember(state, memberId)
+  if (!memberCheck.ok) return memberCheck
   const submission = state.submissions.find((s) => s.id === submissionId)
   if (!submission) return { ok: false, error: 'Submission not found.' }
   if (submission.memberId !== memberId) return { ok: false, error: 'Only the submission author can revise it.' }
@@ -1318,6 +1431,8 @@ export function reviewSubmission(
   decision: 'under_review' | 'revision_requested' | 'approved' | 'rejected',
   comment: string,
 ): ServiceResult<MissionSubmission> {
+  const reviewerCheck = requireSpartanMember(state, reviewerId)
+  if (!reviewerCheck.ok) return reviewerCheck
   const submission = state.submissions.find((s) => s.id === submissionId)
   if (!submission) return { ok: false, error: 'Submission not found.' }
   const mission = state.missions.find((m) => m.id === submission.missionId)
@@ -1382,6 +1497,7 @@ export function reviewSubmission(
       `Approved: +${settlement.payoutXp} XP & +${settlement.awardedCp} CP`,
       `Your Proof of Work for "${mission.title}" was approved!`,
       `/missions/${mission.id}`,
+      { isMissionAlert: true },
     )
   } else {
     next = notifyMember(
@@ -1410,6 +1526,8 @@ export function openSubmissionDispute(
   submissionId: string,
   reason: string,
 ): ServiceResult<MissionDispute> {
+  const memberCheck = requireSpartanMember(state, memberId)
+  if (!memberCheck.ok) return memberCheck
   const submission = state.submissions.find((s) => s.id === submissionId)
   if (!submission) return { ok: false, error: 'Submission not found.' }
   if (submission.memberId !== memberId) return { ok: false, error: 'Only the submission author can open a dispute.' }
@@ -1470,6 +1588,8 @@ export function resolveDispute(
   resolution: 'resolved_upheld' | 'resolved_overturned',
   resolutionNote: string,
 ): ServiceResult<MissionDispute> {
+  const stewardCheck = requireSpartanMember(state, stewardId)
+  if (!stewardCheck.ok) return stewardCheck
   const canModerate =
     memberHasPermission(stewardId, state.permissionGrants, 'moderator') ||
     memberHasPermission(stewardId, state.permissionGrants, 'platform.admin')
@@ -1516,7 +1636,7 @@ export function resolveDispute(
     const settlement = settleApprovedSubmission(next, stewardId, approvedSub, mission)
     if (!settlement.ok) return settlement
     next = settlement.state
-    next = notifyMember(next, submission.memberId, 'xp', 'Dispute Resolved in Your Favour', `Stewardship overturned rejection on "${mission.title}" (+${settlement.payoutXp} XP, +${settlement.awardedCp} CP).`, `/missions/${mission.id}`)
+    next = notifyMember(next, submission.memberId, 'xp', 'Dispute Resolved in Your Favour', `Stewardship overturned rejection on "${mission.title}" (+${settlement.payoutXp} XP, +${settlement.awardedCp} CP).`, `/missions/${mission.id}`, { isMissionAlert: true })
   } else {
     const upheldSub: MissionSubmission = {
       ...submission,
@@ -1548,6 +1668,8 @@ export function reportMission(
   missionId: string,
   reason: string,
 ): ServiceResult<null> {
+  const reporterCheck = requireSpartanMember(state, reporterId)
+  if (!reporterCheck.ok) return reporterCheck
   const mission = state.missions.find((m) => m.id === missionId)
   if (!mission) return { ok: false, error: 'Mission not found.' }
   if (!reason.trim()) return { ok: false, error: 'Provide a reason for flagging this mission.' }
@@ -1570,8 +1692,9 @@ export function completeAcademyLesson(
   lessonId: string,
   selectedOptionIndex: number,
 ): ServiceResult<{ xpAwarded: number; cpAwarded: number; unlockedModules: string[]; unlockedPaths: string[] }> {
-  const member = state.members.find((m) => m.id === memberId)
-  if (!member) return { ok: false, error: 'Sign in as a Spartan to record learning progress.' }
+  const memberCheck = requireSpartanMember(state, memberId, 'Sign in as a Spartan to record learning progress.')
+  if (!memberCheck.ok) return memberCheck
+  const member = memberCheck.member
 
   let targetPath = state.academyPaths[0]
   let targetModule = state.academyPaths[0]?.modules[0]
@@ -1618,9 +1741,15 @@ export function completeAcademyLesson(
       ...state.learningCompletions,
       { id: uid('lc'), memberId, itemType: 'lesson', itemId: lessonId, completedAt: now },
     ],
-    members: state.members.map((m) =>
-      m.id === memberId ? { ...m, onboardingChecklist: { ...m.onboardingChecklist, academyStarted: true } } : m,
-    ),
+    members: state.members.map((m) => {
+      if (m.id !== memberId) return m
+      const nextChecklist = { ...m.onboardingChecklist, academyStarted: true }
+      return {
+        ...m,
+        onboardingChecklist: nextChecklist,
+        onboardingStage: isOnboardingComplete(nextChecklist) ? 'completed' : m.onboardingStage,
+      }
+    }),
   }
 
   let totalXp = 0
@@ -1740,8 +1869,9 @@ export function submitPracticalAssessment(
   assessmentId: string,
   responseText: string,
 ): ServiceResult<{ xpAwarded: number; cpAwarded: number }> {
-  const member = state.members.find((m) => m.id === memberId)
-  if (!member) return { ok: false, error: 'Sign in to submit an assessment.' }
+  const memberCheck = requireSpartanMember(state, memberId, 'Sign in as a Spartan to submit an assessment.')
+  if (!memberCheck.ok) return memberCheck
+  const member = memberCheck.member
   if (responseText.trim().length < 20) {
     return { ok: false, error: 'Write at least 20 characters for your practical assessment response.' }
   }
@@ -1837,6 +1967,8 @@ export function rsvpEvent(
   eventId: string,
   role: EventAttendanceRole = 'attendee',
 ): ServiceResult<null> {
+  const memberCheck = requireSpartanMember(state, memberId, 'Sign in as a Spartan to RSVP for events.')
+  if (!memberCheck.ok) return memberCheck
   const event = state.events.find((e) => e.id === eventId)
   if (!event) return { ok: false, error: 'Event not found.' }
   if (event.isPast) return { ok: false, error: 'RSVP is closed for past events.' }
@@ -1844,6 +1976,9 @@ export function rsvpEvent(
   const activeRsvps = state.eventParticipations.filter((ep) => ep.eventId === eventId && ep.status !== 'cancelled').length
   const existing = state.eventParticipations.find((ep) => ep.eventId === eventId && ep.memberId === memberId && ep.status !== 'cancelled')
   if (existing) {
+    if (existing.status === 'attended') {
+      return { ok: false, error: 'Attendance for this event has already been verified.' }
+    }
     // Cancel RSVP
     return {
       ok: true,
@@ -1878,7 +2013,7 @@ export function rsvpEvent(
       ],
     },
     data: null,
-    message: `Registered for "${event.title}" as ${role}.`,
+    message: `Registered for "${event.title}".`,
   }
 }
 
@@ -1889,9 +2024,25 @@ export function recordEventAttendanceOrRole(
   memberId: string,
   role: EventAttendanceRole,
 ): ServiceResult<{ xpAwarded: number; cpAwarded: number; cappedOut: boolean }> {
+  const actorCheck = requireSpartanMember(state, actorId)
+  if (!actorCheck.ok) return actorCheck
   const event = state.events.find((e) => e.id === eventId)
   const member = state.members.find((m) => m.id === memberId)
   if (!event || !member) return { ok: false, error: 'Event or member not found.' }
+  if (event.isPast) return { ok: false, error: 'Cannot verify attendance or roles for past events.' }
+
+  const canVerifyEvent =
+    memberHasPermission(actorId, state.permissionGrants, 'event.manage', event.houseId ?? undefined) ||
+    (event.houseId ? memberHasPermission(actorId, state.permissionGrants, 'house.manage', event.houseId) : false) ||
+    memberHasPermission(actorId, state.permissionGrants, 'moderator') ||
+    memberHasPermission(actorId, state.permissionGrants, 'platform.admin')
+
+  if (!canVerifyEvent) {
+    return {
+      ok: false,
+      error: 'Only authorised Event Managers, House Strategoi, or Stewards can verify event attendance and roles.',
+    }
+  }
 
   const now = nowIso()
   const existing = state.eventParticipations.find((ep) => ep.eventId === eventId && ep.memberId === memberId)
@@ -1982,6 +2133,8 @@ export function proposeEvent(
   hostMemberId: string,
   input: Omit<ArenaEvent, 'id' | 'hostMemberId' | 'isPast'>,
 ): ServiceResult<ArenaEvent> {
+  const hostCheck = requireSpartanMember(state, hostMemberId, 'Sign in as a Spartan to propose an event.')
+  if (!hostCheck.ok) return hostCheck
   if (!input.title.trim()) return { ok: false, error: 'Event title is required.' }
   const event: ArenaEvent = {
     ...input,
@@ -2011,6 +2164,8 @@ export function toggleBookmark(
   targetType: 'mission' | 'opportunity' | 'project' | 'resource' | 'event',
   targetId: string,
 ): ServiceResult<boolean> {
+  const memberCheck = requireSpartanMember(state, memberId, 'Sign in as a Spartan to save bookmarks.')
+  if (!memberCheck.ok) return memberCheck
   const exists = state.savedBookmarks.some(
     (b) => b.memberId === memberId && b.targetType === targetType && b.targetId === targetId,
   )
@@ -2030,6 +2185,8 @@ export function addExploreProject(
   memberId: string,
   input: Omit<ExploreProject, 'id' | 'ownerMemberId' | 'createdAt'>,
 ): ServiceResult<ExploreProject> {
+  const memberCheck = requireSpartanMember(state, memberId, 'Sign in as a Spartan to add a project.')
+  if (!memberCheck.ok) return memberCheck
   if (!input.title.trim()) return { ok: false, error: 'Project title is required.' }
   const project: ExploreProject = {
     ...input,
@@ -2050,6 +2207,8 @@ export function addExploreService(
   memberId: string,
   input: Omit<ExploreService, 'id' | 'providerMemberId' | 'createdAt'>,
 ): ServiceResult<ExploreService> {
+  const memberCheck = requireSpartanMember(state, memberId, 'Sign in as a Spartan to publish a service.')
+  if (!memberCheck.ok) return memberCheck
   if (!input.title.trim()) return { ok: false, error: 'Service title is required.' }
   const service: ExploreService = {
     ...input,
@@ -2072,6 +2231,8 @@ export function commissionServiceAsMission(
   customBrief: string,
   xpReward: number,
 ): ServiceResult<Mission> {
+  const clientCheck = requireSpartanMember(state, clientMemberId, 'Sign in as a Spartan to commission a service.')
+  if (!clientCheck.ok) return clientCheck
   const service = state.services.find((s) => s.id === serviceId)
   if (!service) return { ok: false, error: 'Service not found.' }
   if (service.providerMemberId === clientMemberId) {
@@ -2147,6 +2308,8 @@ export function addExploreResource(
   memberId: string,
   input: Omit<ExploreResource, 'id' | 'authorMemberId' | 'createdAt'>,
 ): ServiceResult<ExploreResource> {
+  const memberCheck = requireSpartanMember(state, memberId, 'Sign in as a Spartan to publish a resource.')
+  if (!memberCheck.ok) return memberCheck
   if (!input.title.trim()) return { ok: false, error: 'Resource title is required.' }
   const resource: ExploreResource = {
     ...input,
@@ -2167,6 +2330,8 @@ export function addExploreOpportunity(
   memberId: string,
   input: Omit<ExploreOpportunity, 'id' | 'postedByMemberId' | 'createdAt'>,
 ): ServiceResult<ExploreOpportunity> {
+  const memberCheck = requireSpartanMember(state, memberId, 'Sign in as a Spartan to publish an opportunity.')
+  if (!memberCheck.ok) return memberCheck
   if (!input.title.trim()) return { ok: false, error: 'Opportunity title is required.' }
   const opp: ExploreOpportunity = {
     ...input,
@@ -2187,6 +2352,21 @@ export function createDiscussion(
   memberId: string,
   input: { title: string; topicTag: string; houseId: HouseId | null; body: string },
 ): ServiceResult<ExploreDiscussion> {
+  const member = state.members.find((m) => m.id === memberId)
+  if (!member) return { ok: false, error: 'Sign in to start a discussion.' }
+  if (member.membershipStatus !== 'spartan') {
+    return { ok: false, error: 'Only Spartan members can start discussions.' }
+  }
+
+  const balance = deriveXpBalance(memberId, state.xpTransactions)
+  const levelInfo = calculateLevelProgress(balance.lifetimeXp, state.config.levelThresholds)
+  if (levelInfo.level < DISCUSSION_UNLOCK_LEVEL) {
+    return {
+      ok: false,
+      error: `Discussion creation unlocks at Level ${DISCUSSION_UNLOCK_LEVEL}. Your account is currently Level ${levelInfo.level}.`,
+    }
+  }
+
   if (!input.title.trim() || !input.body.trim()) return { ok: false, error: 'Title and message are required.' }
   const disc: ExploreDiscussion = {
     id: uid('disc'),
@@ -2212,6 +2392,11 @@ export function addDiscussionReply(
   discussionId: string,
   body: string,
 ): ServiceResult<ExploreDiscussion> {
+  const member = state.members.find((m) => m.id === memberId)
+  if (!member) return { ok: false, error: 'Sign in to reply to discussions.' }
+  if (member.membershipStatus !== 'spartan') {
+    return { ok: false, error: 'Only Spartan members can reply to discussions.' }
+  }
   if (!body.trim()) return { ok: false, error: 'Reply cannot be empty.' }
   const disc = state.discussions.find((d) => d.id === discussionId)
   if (!disc) return { ok: false, error: 'Discussion not found.' }
@@ -2236,6 +2421,8 @@ export function verifyMentorshipSession(
   stewardId: string,
   sessionId: string,
 ): ServiceResult<{ xpAwarded: number; mentorCp: number; cappedOut: boolean }> {
+  const stewardCheck = requireSpartanMember(state, stewardId)
+  if (!stewardCheck.ok) return stewardCheck
   const canVerify =
     memberHasPermission(stewardId, state.permissionGrants, 'mentor.manage') ||
     memberHasPermission(stewardId, state.permissionGrants, 'platform.admin')
@@ -2328,6 +2515,8 @@ export function logMentorshipSession(
   topic: string,
   summary: string,
 ): ServiceResult<ArenaPrototypeState['mentorshipSessions'][number]> {
+  const mentorCheck = requireSpartanMember(state, mentorId)
+  if (!mentorCheck.ok) return mentorCheck
   if (mentorId === menteeMemberId) return { ok: false, error: 'Mentor and mentee must be different members.' }
   if (!topic.trim()) return { ok: false, error: 'Mentorship topic is required.' }
   const session: ArenaPrototypeState['mentorshipSessions'][number] = {
@@ -2355,6 +2544,8 @@ export function adminAdjustXp(
   deltaAmount: number,
   reason: string,
 ): ServiceResult<null> {
+  const adminCheck = requireSpartanMember(state, adminId)
+  if (!adminCheck.ok) return adminCheck
   const canFinance =
     memberHasPermission(adminId, state.permissionGrants, 'finance.admin') ||
     memberHasPermission(adminId, state.permissionGrants, 'platform.admin')
@@ -2399,6 +2590,8 @@ export function grantOrRevokePermission(
   scope: PermissionScope,
   houseId?: HouseId,
 ): ServiceResult<{ granted: boolean }> {
+  const adminCheck = requireSpartanMember(state, adminId)
+  if (!adminCheck.ok) return adminCheck
   if (!memberHasPermission(adminId, state.permissionGrants, 'platform.admin')) {
     return { ok: false, error: 'Control Room Admin permission required.' }
   }
@@ -2441,6 +2634,8 @@ export function appointAscendancy(
   rank: AscendancyRank,
   note: string,
 ): ServiceResult<MemberProfile> {
+  const adminCheck = requireSpartanMember(state, adminId)
+  if (!adminCheck.ok) return adminCheck
   if (!memberHasPermission(adminId, state.permissionGrants, 'platform.admin')) {
     return { ok: false, error: 'Only Control Room Admins can appoint Ascendancy ranks.' }
   }
@@ -2473,6 +2668,8 @@ export function updatePlatformConfig(
   adminId: string,
   updatedConfig: PlatformConfig,
 ): ServiceResult<PlatformConfig> {
+  const adminCheck = requireSpartanMember(state, adminId)
+  if (!adminCheck.ok) return adminCheck
   if (!memberHasPermission(adminId, state.permissionGrants, 'platform.admin')) {
     return { ok: false, error: 'Control Room Admin permission required.' }
   }
@@ -2484,16 +2681,51 @@ export function updatePlatformConfig(
   return { ok: true, state: next, data: updatedConfig, message: 'Platform progression configuration updated.' }
 }
 
-export function markAllNotificationsRead(state: ArenaPrototypeState, memberId: string): ArenaPrototypeState {
+export function markAllNotificationsRead(
+  state: ArenaPrototypeState,
+  memberId: string | null = state.currentMemberId,
+): ServiceResult<null> {
+  const actorCheck = requireSpartanMember(state, memberId, 'Sign in as a Spartan to manage notifications.')
+  if (!actorCheck.ok) return actorCheck
+
   return {
-    ...state,
-    notifications: state.notifications.map((n) => (n.memberId === memberId ? { ...n, read: true } : n)),
+    ok: true,
+    state: {
+      ...state,
+      notifications: state.notifications.map((n) =>
+        n.memberId === actorCheck.member.id ? { ...n, read: true } : n,
+      ),
+    },
+    data: null,
+    message: 'All notifications marked as read.',
   }
 }
 
-export function markNotificationRead(state: ArenaPrototypeState, notificationId: string): ArenaPrototypeState {
+export function markNotificationRead(
+  state: ArenaPrototypeState,
+  notificationId: string,
+  actorMemberId: string | null = state.currentMemberId,
+): ServiceResult<null> {
+  const actorCheck = requireSpartanMember(state, actorMemberId, 'Sign in as a Spartan to manage notifications.')
+  if (!actorCheck.ok) return actorCheck
+
+  const notification = state.notifications.find((n) => n.id === notificationId)
+  if (!notification) {
+    return { ok: false, error: 'Notification not found.' }
+  }
+  if (notification.memberId !== actorCheck.member.id) {
+    return { ok: false, error: 'You can only mark your own notifications as read.' }
+  }
+
   return {
-    ...state,
-    notifications: state.notifications.map((n) => (n.id === notificationId ? { ...n, read: true } : n)),
+    ok: true,
+    state: {
+      ...state,
+      notifications: state.notifications.map((n) =>
+        n.id === notificationId && n.memberId === actorCheck.member.id ? { ...n, read: true } : n,
+      ),
+    },
+    data: null,
+    message: 'Notification marked as read.',
   }
 }

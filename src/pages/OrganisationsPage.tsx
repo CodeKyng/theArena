@@ -1,8 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { Building2, CheckCircle2, Info, Plus, ShieldCheck } from 'lucide-react'
 import { useArena } from '../app/arenaContext'
-import PageScaffold from '../components/PageScaffold'
 import PermissionGate from '../components/PermissionGate'
+import { formatVerificationStatus } from '../domain/constants'
 import type { OrganisationProfile } from '../domain/types'
 
 export default function OrganisationsPage() {
@@ -37,19 +37,15 @@ export default function OrganisationsPage() {
   const verifiedCount = state.organisations.filter((o) => o.verificationStatus === 'verified').length
 
   return (
-    <PageScaffold
-      section="Account Extension"
-      name="Organisations"
-      description="Create and represent a Project, Brand, Company, Team, or Initiative under your single Spartan account."
-    >
+    <div className="inner-page">
       <PermissionGate title="Organisations">
         <div className="organization-experience">
           <section className="organization-banner">
             <div>
-              <span className="section-kicker">UNIFIED ACCOUNT EXTENSION</span>
-              <h2>Teams &amp; protocols<br />behind the Arena.</h2>
+              <span className="section-kicker">ORGANISATIONS</span>
+              <h2>Teams &amp; protocols<br />across The Arena.</h2>
               <p>
-                Any verified Spartan can represent an Organisation under their single account—never inheriting personal XP, Levels, or Ascendancy ranks.
+                Represent a project, team, brand, company, or community initiative under your existing account.
               </p>
             </div>
             <div className="organization-numbers">
@@ -63,7 +59,7 @@ export default function OrganisationsPage() {
           <div className="arena-notice arena-notice-info">
             <Info size={16} />
             <span>
-              <b>Strict Separation Guarantee:</b> New organisations start as <b>unverified</b> and never inherit personal XP, numeric Levels, or Ascendancy ranks from their creator.
+              Organisations begin unverified until reviewed in the Control Room, and keep separate profiles from your personal XP, Level, and Ascendancy rank.
             </span>
           </div>
 
@@ -73,13 +69,13 @@ export default function OrganisationsPage() {
                 <h2>Your Organisations &amp; Context Switcher</h2>
               </div>
               {memberOrganisations.length === 0 ? (
-                <p style={{ color: 'var(--arena-ink-muted)' }}>You have not created or joined an organisation yet.</p>
+                <p style={{ color: 'var(--arena-muted)' }}>You have not created or joined an organisation yet.</p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {memberOrganisations.map((org) => {
                     const isActive = activeOrganisation?.id === org.id
                     return (
-                      <div key={org.id} style={{ padding: 13, border: '1px solid var(--arena-border)', borderRadius: 9, background: isActive ? '#eef5ff' : '#fff' }}>
+                      <div key={org.id} style={{ padding: 13, border: '1px solid var(--arena-line)', borderRadius: 9, background: isActive ? '#eef5ff' : '#fff' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <Building2 size={16} color="#1e5cb5" />
@@ -87,18 +83,18 @@ export default function OrganisationsPage() {
                             <span className="tag">{org.kind}</span>
                           </div>
                           <span className={`listing-kind ${org.verificationStatus === 'verified' ? 'kind-success' : 'kind-amber'}`}>
-                            {org.verificationStatus.replace('_', ' ')}
+                            {formatVerificationStatus(org.verificationStatus)}
                           </span>
                         </div>
-                        <p style={{ margin: '6px 0', fontSize: 13, color: 'var(--arena-ink-muted)' }}>{org.tagline} — {org.description}</p>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: 'var(--arena-ink-muted)', gap: 8, flexWrap: 'wrap' }}>
-                          <span>{org.ecosystem} · Personal XP/Rank Inherited: <b>None (0)</b></span>
+                        <p style={{ margin: '6px 0', fontSize: 13, color: 'var(--arena-muted)' }}>{org.tagline} — {org.description}</p>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: 'var(--arena-muted)', gap: 8, flexWrap: 'wrap' }}>
+                          <span>{org.ecosystem || 'Arena'}</span>
                           <button
                             type="button"
                             className={`button button-small ${isActive ? 'button-quiet' : 'button-bright'}`}
                             onClick={() => switchOrg(isActive ? null : org.id)}
                           >
-                            {isActive ? <><CheckCircle2 size={13} /> Active Context (Switch to Personal)</> : 'Switch Context'}
+                            {isActive ? <><CheckCircle2 size={13} /> Active · Switch to Personal account</> : 'Switch to organisation'}
                           </button>
                         </div>
                       </div>
@@ -124,14 +120,14 @@ export default function OrganisationsPage() {
                         {org.verificationStatus === 'verified' ? (
                           <span className="org-verified"><ShieldCheck size={13} /> VERIFIED</span>
                         ) : (
-                          <span className="listing-kind kind-amber">{org.verificationStatus.replace('_', ' ')}</span>
+                          <span className="listing-kind kind-amber">{formatVerificationStatus(org.verificationStatus)}</span>
                         )}
                       </div>
                       <span className="section-kicker">{org.kind}</span>
                       <h3>{org.name}</h3>
                       <p>{org.tagline || org.description}</p>
                       <div className="organization-card-bottom">
-                        <span>Owner: {owner?.displayName ?? 'Spartan'} · {org.ecosystem || 'Arena'}</span>
+                        <span>Owner: {owner?.displayName ?? 'Member'} · {org.ecosystem || 'Arena'}</span>
                       </div>
                     </article>
                   )
@@ -141,8 +137,8 @@ export default function OrganisationsPage() {
 
             <form className="form-panel" onSubmit={handleCreate}>
               <h2 style={{ marginTop: 0 }}><Plus size={17} style={{ verticalAlign: 'middle' }} /> Create Organisation Profile</h2>
-              <p style={{ fontSize: 13, color: 'var(--arena-ink-muted)', marginTop: 0 }}>
-                Linked to <b>{currentMember?.displayName}</b>. Starts <code>unverified</code> until approved in Control Room.
+              <p style={{ fontSize: 13, color: 'var(--arena-muted)', marginTop: 0 }}>
+                Managed from <b>{currentMember?.displayName}</b>’s account.
               </p>
               <div className="form-grid">
                 <label className="full-field">
@@ -177,12 +173,12 @@ export default function OrganisationsPage() {
                 </label>
               </div>
               <div style={{ marginTop: 14 }}>
-                <button type="submit" className="button button-bright">Create Unverified Organisation</button>
+                <button type="submit" className="button button-bright">Create Organisation</button>
               </div>
             </form>
           </div>
         </div>
       </PermissionGate>
-    </PageScaffold>
+    </div>
   )
 }

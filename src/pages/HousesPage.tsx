@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowUpRight, CheckCircle2, ShieldCheck, Users } from 'lucide-react'
 import { useArena } from '../app/arenaContext'
-import PageScaffold from '../components/PageScaffold'
+import { getHouseName } from '../domain/constants'
 import type { HouseId } from '../domain/types'
 
 export default function HousesPage() {
@@ -11,11 +11,7 @@ export default function HousesPage() {
   const [secondary, setSecondary] = useState<string>(currentMember?.secondaryHouseId ?? '')
 
   return (
-    <PageScaffold
-      section="THE SIX CANONICAL HOUSES"
-      name="Arena Houses"
-      description="Every Spartan aligns with one Primary House and an optional Secondary House (0 XP for House selection). House Echoes serves both as a canonical outreach House and as a cross-House capability under strict anti-farming policy."
-    >
+    <div className="inner-page">
       <div className="community-experience" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
         <section className="community-banner">
           <div className="community-banner-art" aria-hidden="true">
@@ -24,21 +20,21 @@ export default function HousesPage() {
             <b>⌘</b>
           </div>
           <div>
-            <span className="section-kicker">FIND YOUR DISCIPLINE</span>
+            <span className="section-kicker">THE SIX HOUSES</span>
             <h2>
               Belong to something
               <br />
               <em>being built.</em>
             </h2>
             <p>
-              Six focused craft houses spanning writing, hosting, design, compliant outreach, engineering, and ecosystem intelligence.
+              Choose a Primary House and an optional Secondary House across writing, hosting, design, compliant outreach, engineering, and ecosystem research.
             </p>
           </div>
           <div className="community-total">
             <b>0{state.houses.length}</b>
-            <small>CANONICAL HOUSES</small>
+            <small>ARENA HOUSES</small>
             <b>{state.members.length}</b>
-            <small>ACTIVE SPARTANS</small>
+            <small>MEMBERS</small>
           </div>
         </section>
 
@@ -47,23 +43,30 @@ export default function HousesPage() {
             <div className="panel-title">
               <div>
                 <span className="section-kicker">YOUR HOUSE AFFILIATION</span>
-                <h2>Primary &amp; Secondary House Selection (0 XP)</h2>
+                <h2>Primary &amp; Secondary House Selection</h2>
               </div>
               {currentMember.primaryHouseId && (
                 <span className="listing-kind kind-success">
-                  <CheckCircle2 size={13} /> Primary: {state.houses.find((h) => h.id === currentMember.primaryHouseId)?.name}
+                  <CheckCircle2 size={13} /> Primary: House {getHouseName(currentMember.primaryHouseId, state.houses)}
                 </span>
               )}
             </div>
+            <p style={{ margin: '0 0 12px', fontSize: 13, color: '#52647d' }}>
+              Your Houses personalise mission and learning recommendations. Choosing or changing Houses awards 0 XP.
+            </p>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
               <label className="arena-field" style={{ flex: '1 1 200px' }}>
                 Primary House
                 <select
                   className="arena-select"
-                  value={primary || currentMember.primaryHouseId || ''}
-                  onChange={(e) => setPrimary(e.target.value)}
+                  value={primary}
+                  onChange={(e) => {
+                    const next = e.target.value
+                    setPrimary(next)
+                    if (!next || next === secondary) setSecondary('')
+                  }}
                 >
-                  <option value="">Choose Primary House...</option>
+                  <option value="">None</option>
                   {state.houses.map((h) => (
                     <option key={h.id} value={h.id}>
                       {h.glyph} House {h.name}
@@ -75,12 +78,12 @@ export default function HousesPage() {
                 Secondary House (optional)
                 <select
                   className="arena-select"
-                  value={secondary || currentMember.secondaryHouseId || ''}
+                  value={secondary}
                   onChange={(e) => setSecondary(e.target.value)}
                 >
                   <option value="">None</option>
                   {state.houses
-                    .filter((h) => h.id !== (primary || currentMember.primaryHouseId))
+                    .filter((h) => h.id !== primary)
                     .map((h) => (
                       <option key={h.id} value={h.id}>
                         {h.glyph} House {h.name}
@@ -92,12 +95,12 @@ export default function HousesPage() {
                 type="button"
                 className="button button-bright"
                 onClick={() => {
-                  const p = (primary || currentMember.primaryHouseId || null) as HouseId | null
-                  const s = (secondary || currentMember.secondaryHouseId || null) as HouseId | null
-                  updateHouses(p, s === p ? null : s)
+                  const p = (primary || null) as HouseId | null
+                  const s = (!p || secondary === p ? null : (secondary || null)) as HouseId | null
+                  updateHouses(p, s)
                 }}
               >
-                Update Houses (0 XP)
+                Save Houses
               </button>
             </div>
           </section>
@@ -135,7 +138,7 @@ export default function HousesPage() {
                 </div>
                 <div className="community-card-foot">
                   <span>
-                    <Users size={13} /> {membersCount} Spartans · {activeMissions} open missions
+                    <Users size={13} /> {membersCount} members · {activeMissions} open missions
                   </span>
                   <Link to={`/houses/${house.slug}`}>
                     Enter House <ArrowUpRight size={14} />
@@ -146,6 +149,6 @@ export default function HousesPage() {
           })}
         </div>
       </div>
-    </PageScaffold>
+    </div>
   )
 }

@@ -1,9 +1,12 @@
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { ArenaProvider } from './app/ArenaProvider'
+import { useArena } from './app/arenaContext'
+import RequireAuth from './components/RequireAuth'
 import AppLayout from './layouts/AppLayout'
 import LandingPage from './pages/public/LandingPage'
 import AuthPage from './pages/auth/AuthPage'
 import HomePage from './pages/HomePage'
+import NotificationsPage from './pages/NotificationsPage'
 import MissionsPage from './pages/MissionsPage'
 import MissionCreatePage from './pages/MissionCreatePage'
 import MissionDetailPage from './pages/MissionDetailPage'
@@ -15,10 +18,30 @@ import EventsPage from './pages/EventsPage'
 import LeaderboardsPage from './pages/LeaderboardsPage'
 import ActivityPage from './pages/ActivityPage'
 import ProfilePage from './pages/ProfilePage'
+import PersonalizationPage from './pages/PersonalizationPage'
+import SettingsPage from './pages/SettingsPage'
+import HelpPage from './pages/HelpPage'
 import OrganisationsPage from './pages/OrganisationsPage'
 import StewardshipPage from './pages/StewardshipPage'
 import ControlRoomPage from './pages/ControlRoomPage'
 import NotFoundPage from './pages/NotFoundPage'
+
+function SignupRedirect() {
+  const location = useLocation()
+  return <Navigate to="/register" replace state={location.state} />
+}
+
+function NotFoundRoute() {
+  const { isAuthenticated } = useArena()
+  if (isAuthenticated) {
+    return (
+      <AppLayout>
+        <NotFoundPage />
+      </AppLayout>
+    )
+  }
+  return <NotFoundPage />
+}
 
 export default function App() {
   return (
@@ -26,12 +49,22 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<AuthPage mode="login" />} />
         <Route path="/register" element={<AuthPage mode="register" />} />
-        <Route path="/signup" element={<Navigate to="/register" replace />} />
-        <Route path="/onboarding" element={<Navigate to="/home" replace />} />
+        <Route path="/signup" element={<SignupRedirect />} />
 
         <Route element={<AppLayout />}>
           <Route path="/" element={<LandingPage />} />
-          <Route path="/home" element={<HomePage />} />
+        </Route>
+
+        <Route
+          element={
+            <RequireAuth>
+              <AppLayout />
+            </RequireAuth>
+          }
+        >
+          <Route path="/onboarding" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/dashboard" element={<HomePage />} />
+          <Route path="/home" element={<Navigate to="/dashboard" replace />} />
           <Route path="/missions" element={<MissionsPage />} />
           <Route path="/missions/new" element={<MissionCreatePage />} />
           <Route path="/missions/:id" element={<MissionDetailPage />} />
@@ -43,9 +76,13 @@ export default function App() {
           <Route path="/leaderboards" element={<LeaderboardsPage />} />
           <Route path="/activity" element={<ActivityPage />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/personalization" element={<PersonalizationPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/help" element={<HelpPage />} />
           <Route path="/organisations" element={<OrganisationsPage />} />
           <Route path="/stewardship" element={<StewardshipPage />} />
           <Route path="/control-room" element={<ControlRoomPage />} />
+          <Route path="/notifications" element={<NotificationsPage />} />
 
           {/* Legacy route redirects */}
           <Route path="/discover" element={<Navigate to="/explore?tab=opportunities" replace />} />
@@ -60,18 +97,16 @@ export default function App() {
           <Route path="/organizations" element={<Navigate to="/organisations" replace />} />
           <Route path="/resources" element={<Navigate to="/explore?tab=resources" replace />} />
           <Route path="/discussions" element={<Navigate to="/explore?tab=discussions" replace />} />
-          <Route path="/dashboard" element={<Navigate to="/activity" replace />} />
           <Route path="/applications" element={<Navigate to="/activity" replace />} />
-          <Route path="/notifications" element={<Navigate to="/home" replace />} />
           <Route path="/achievements" element={<Navigate to="/activity?tab=progress" replace />} />
           <Route path="/reputation" element={<Navigate to="/activity?tab=progress" replace />} />
           <Route path="/admin" element={<Navigate to="/control-room" replace />} />
           <Route path="/analytics" element={<Navigate to="/control-room" replace />} />
           <Route path="/moderation" element={<Navigate to="/control-room" replace />} />
           <Route path="/applicants" element={<Navigate to="/control-room" replace />} />
-
-          <Route path="*" element={<NotFoundPage />} />
         </Route>
+
+        <Route path="*" element={<NotFoundRoute />} />
       </Routes>
     </ArenaProvider>
   )

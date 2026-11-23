@@ -1,12 +1,19 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Plus, Search } from 'lucide-react'
+import { Plus, Search, SlidersHorizontal } from 'lucide-react'
 import { useArena } from '../app/arenaContext'
 import EmptyState from '../components/EmptyState'
 import ListingCard from '../components/ListingCard'
-import PageScaffold from '../components/PageScaffold'
 import DirectoryShowcase from '../components/public/DirectoryShowcase'
-import { MISSION_CATEGORIES, MISSION_STATUSES, PARTICIPATION_FORMATS } from '../domain/constants'
+import {
+  formatMissionStatus,
+  formatParticipationFormat,
+  formatSubmissionStatus,
+  getHouseName,
+  MISSION_CATEGORIES,
+  MISSION_STATUSES,
+  PARTICIPATION_FORMATS,
+} from '../domain/constants'
 
 type MissionTab = 'discover' | 'mine' | 'submissions' | 'history'
 
@@ -23,6 +30,14 @@ export default function MissionsPage() {
   const [difficultyFilter, setDifficultyFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
   const [openOnly, setOpenOnly] = useState(false)
+  const [showMoreFilters, setShowMoreFilters] = useState(false)
+
+  const secondaryFilterCount =
+    (formatFilter !== 'all' ? 1 : 0) +
+    (bandFilter !== 'all' ? 1 : 0) +
+    (difficultyFilter !== 'all' ? 1 : 0) +
+    (statusFilter !== 'all' ? 1 : 0) +
+    (openOnly ? 1 : 0)
 
   const filteredMissions = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -110,51 +125,48 @@ export default function MissionsPage() {
   }
 
   return (
-    <PageScaffold
-      section="PROOF-OF-WORK ENGINE"
-      name="Arena Missions"
-      description="Join open, application-based, team, or guided missions across the six Houses—powered by upfront Spendable XP escrow and human Proof-of-Work review."
-      actions={
-        can('mission.create') ? (
-          <Link className="button button-bright" to="/missions/new">
-            <Plus size={15} /> Create Mission
-          </Link>
-        ) : undefined
-      }
-    >
+    <div className="inner-page">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <DirectoryShowcase
           variant="missions"
-          kicker="SKILL IN. PROOF OF WORK OUT."
-          headline="Solve something real. Earn XP & CP."
-          detail="Upfront Spendable XP escrow protects contributors while anti-farming policy keeps outreach authentic."
+          kicker="PROOF OF WORK"
+          headline="Missions"
+          detail="Join open, application, team, or guided missions across the six Houses. Submit verified work to earn XP and Contribution Points."
           metric={String(activeCount)}
           metricLabel="ACTIVE MISSIONS"
-          actionLabel={can('mission.create') ? 'Launch Mission Wizard' : 'Browse House Guides'}
+          actionLabel={can('mission.create') ? 'Create Mission' : 'Browse Houses'}
           actionTo={can('mission.create') ? '/missions/new' : '/houses'}
           onActionClick={() => navigate(can('mission.create') ? '/missions/new' : '/houses')}
         />
 
-        <div className="arena-tabs" role="tablist">
-          {(
-            [
-              ['discover', 'Discover Missions'],
-              ['mine', 'My Missions'],
-              ['submissions', `Submissions (${visibleSubmissions.length})`],
-              ['history', 'History & Completed'],
-            ] as const
-          ).map(([id, label]) => (
-            <button
-              key={id}
-              type="button"
-              role="tab"
-              aria-selected={tab === id}
-              className={`arena-tab ${tab === id ? 'active' : ''}`}
-              onClick={() => setTab(id)}
-            >
-              {label}
-            </button>
-          ))}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+          <div className="arena-tabs" role="tablist">
+            {(
+              [
+                ['discover', 'Discover Missions'],
+                ['mine', 'My Missions'],
+                ['submissions', `Submissions (${visibleSubmissions.length})`],
+                ['history', 'History & Completed'],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={tab === id}
+                className={`arena-tab ${tab === id ? 'active' : ''}`}
+                onClick={() => setTab(id)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {can('mission.create') && (
+            <Link className="button button-bright" to="/missions/new">
+              <Plus size={15} /> Create Mission
+            </Link>
+          )}
         </div>
 
         {tab === 'submissions' ? (
@@ -162,7 +174,7 @@ export default function MissionsPage() {
             <EmptyState name="your submission queue" actionLabel="Sign in to view" onClear={() => navigate('/login')} />
           ) : visibleSubmissions.length === 0 ? (
             <div className="empty-state">
-              <h3>No submissions in your queue</h3>
+              <h3>No submissions yet</h3>
               <p>Join an active mission and submit Proof of Work to see submissions here.</p>
               <button type="button" className="button button-bright" onClick={() => setTab('discover')}>
                 Discover Missions
@@ -188,7 +200,7 @@ export default function MissionsPage() {
                       <tr key={sub.id}>
                         <td><b>{mission?.title ?? sub.missionId}</b></td>
                         <td>{contributor?.displayName ?? sub.memberId}</td>
-                        <td><span className="listing-kind">{sub.status.replace('_', ' ')}</span></td>
+                        <td><span className="listing-kind">{formatSubmissionStatus(sub.status)}</span></td>
                         <td>v{sub.version}</td>
                         <td>
                           <Link className="button button-quiet button-small" to={`/missions/${sub.missionId}`}>
@@ -230,41 +242,61 @@ export default function MissionsPage() {
                 ))}
               </select>
 
-              <select className="filter-select" aria-label="Filter by Format" value={formatFilter} onChange={(e) => setFormatFilter(e.target.value)}>
-                <option value="all">All Formats</option>
-                {PARTICIPATION_FORMATS.map((f) => (
-                  <option key={f.value} value={f.value}>{f.label}</option>
-                ))}
-              </select>
+              <button
+                type="button"
+                className="button button-quiet button-small"
+                aria-expanded={showMoreFilters}
+                onClick={() => setShowMoreFilters((v) => !v)}
+              >
+                <SlidersHorizontal size={13} />
+                More filters{secondaryFilterCount > 0 ? ` (${secondaryFilterCount})` : ''}
+              </button>
 
-              <select className="filter-select" aria-label="Filter by Reward Band" value={bandFilter} onChange={(e) => setBandFilter(e.target.value)}>
-                <option value="all">All Reward Bands</option>
-                <option value="micro">Micro (25–75 XP)</option>
-                <option value="standard">Standard (100–250 XP)</option>
-                <option value="substantial">Substantial (300–750 XP)</option>
-                <option value="major">Major (800–1,500 XP)</option>
-                <option value="above_major">Control Room (&gt;1,500 XP)</option>
-              </select>
-
-              <select className="filter-select" aria-label="Filter by Difficulty" value={difficultyFilter} onChange={(e) => setDifficultyFilter(e.target.value)}>
-                <option value="all">All Difficulties</option>
-                <option value="Beginner">Beginner</option>
-                <option value="Intermediate">Intermediate</option>
-                <option value="Advanced">Advanced</option>
-              </select>
-
-              <select className="filter-select" aria-label="Filter by Status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-                <option value="all">Any Status</option>
-                {MISSION_STATUSES.map((s) => (
-                  <option key={s.value} value={s.value}>{s.label}</option>
-                ))}
-              </select>
-
-              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 600 }}>
-                <input type="checkbox" checked={openOnly} onChange={(e) => setOpenOnly(e.target.checked)} />
-                Open only
-              </label>
+              {(secondaryFilterCount > 0 || houseFilter !== 'all' || categoryFilter !== 'all' || search.trim()) && (
+                <button type="button" className="button button-quiet button-small" onClick={resetFilters}>
+                  Reset
+                </button>
+              )}
             </div>
+
+            {showMoreFilters && (
+              <div className="filter-bar" style={{ paddingTop: 10 }}>
+                <select className="filter-select" aria-label="Filter by Format" value={formatFilter} onChange={(e) => setFormatFilter(e.target.value)}>
+                  <option value="all">All Formats</option>
+                  {PARTICIPATION_FORMATS.map((f) => (
+                    <option key={f.value} value={f.value}>{f.label}</option>
+                  ))}
+                </select>
+
+                <select className="filter-select" aria-label="Filter by Reward Band" value={bandFilter} onChange={(e) => setBandFilter(e.target.value)}>
+                  <option value="all">All Reward Bands</option>
+                  <option value="micro">Micro (25–75 XP)</option>
+                  <option value="standard">Standard (100–250 XP)</option>
+                  <option value="substantial">Substantial (300–750 XP)</option>
+                  <option value="major">Major (800–1,500 XP)</option>
+                  <option value="above_major">High-Value (&gt;1,500 XP)</option>
+                </select>
+
+                <select className="filter-select" aria-label="Filter by Difficulty" value={difficultyFilter} onChange={(e) => setDifficultyFilter(e.target.value)}>
+                  <option value="all">All Difficulties</option>
+                  <option value="Beginner">Beginner</option>
+                  <option value="Intermediate">Intermediate</option>
+                  <option value="Advanced">Advanced</option>
+                </select>
+
+                <select className="filter-select" aria-label="Filter by Status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                  <option value="all">Any Status</option>
+                  {MISSION_STATUSES.map((s) => (
+                    <option key={s.value} value={s.value}>{s.label}</option>
+                  ))}
+                </select>
+
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 600 }}>
+                  <input type="checkbox" checked={openOnly} onChange={(e) => setOpenOnly(e.target.checked)} />
+                  Open only
+                </label>
+              </div>
+            )}
 
             {filteredMissions.length === 0 ? (
               <EmptyState name="these mission filters" actionLabel="Reset filters" onClear={resetFilters} />
@@ -282,10 +314,10 @@ export default function MissionsPage() {
                       key={m.id}
                       glyph={house?.glyph ?? '⌘'}
                       tone={house?.tone ?? 'blue'}
-                      kind={m.status.replace('_', ' ')}
+                      kind={formatMissionStatus(m.status)}
                       kindTone={m.status === 'active' ? 'success' : m.status === 'pending_review' ? 'amber' : 'default'}
                       secondaryBadge={m.crossHouseEligible ? 'Cross-House' : undefined}
-                      meta={`House ${house?.name ?? m.houseId} · ${m.participationFormat} · ${m.difficulty}`}
+                      meta={`House ${getHouseName(m.houseId, state.houses)} · ${formatParticipationFormat(m.participationFormat)} · ${m.difficulty}`}
                       title={m.title}
                       description={m.description}
                       tags={m.tags.slice(0, 3)}
@@ -302,6 +334,6 @@ export default function MissionsPage() {
           </>
         )}
       </div>
-    </PageScaffold>
+    </div>
   )
 }

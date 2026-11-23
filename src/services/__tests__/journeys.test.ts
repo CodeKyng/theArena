@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { INITIAL_ARENA_STATE } from '../../data/seedData'
 import { buildLeaderboard, deriveXpBalance, memberHasPermission } from '../../domain/progression'
 import {
+  addDiscussionReply,
   adminAdjustXp,
   appointAscendancy,
   approveHighValueMission,
@@ -9,10 +10,13 @@ import {
   commissionServiceAsMission,
   completeAcademyLesson,
   completeOrientationAndRules,
+  createDiscussion,
   createMission,
   createOrganisation,
   decideMissionApplication,
   joinOrApplyMission,
+  markAllNotificationsRead,
+  markNotificationRead,
   openSubmissionDispute,
   publishDraftMission,
   recordEventAttendanceOrRole,
@@ -20,12 +24,21 @@ import {
   resolveDispute,
   resubmitMissionWork,
   reviewSubmission,
+  rsvpEvent,
   setOrganisationVerification,
+  signInDemoByEmail,
+  signOutAccount,
   submitMissionWork,
   switchActiveOrganisation,
+  switchDemoPersona,
+  toggleBookmark,
+  updateAccountPrivacy,
   updateMemberHouses,
+  updateMemberProfile,
   verifyMentorshipSession,
 } from '../arenaService'
+import { ARENA_STORAGE_KEY, loadArenaState } from '../arenaStore'
+import { resolveSafeRedirect } from '../../app/authRedirect'
 
 function baseCreateInput(overrides: Partial<Parameters<typeof createMission>[2]> = {}): Parameters<typeof createMission>[2] {
   return {
@@ -110,6 +123,8 @@ describe('The Arena 10 Critical User Journeys', () => {
     expect(joinRes.ok).toBe(true)
     if (!joinRes.ok) return
     s = joinRes.state
+    // Profile not yet updated -> still inbie until all 5 checklist steps are done
+    expect(s.members.find((m) => m.id === newId)?.onboardingStage).toBe('newbie')
     const subRes = submitMissionWork(s, newId, 'mis-intro', 'My first case study for House Seers.', [
       { id: 'ev-1', type: 'text', label: 'Case Study', value: 'Detailed breakdown of House Seers workflow.' },
     ])
@@ -368,12 +383,28 @@ describe('The Arena 10 Critical User Journeys', () => {
     })
     expect(afterBoard.find((r) => r.memberId === 'mem-jordan')?.rank).toBe(jordanRankBefore)
 
-    // Event attendance recording awards +5 XP and +1 CP
+    // Ordinary members (Jordan, Alex) cannot verify event attendance or Host/Support roles
+    const unauthorizedJordan = recordEventAttendanceOrRole(comm.state, 'mem-jordan', 'evt-onboarding-sync', 'mem-jordan', 'host')
+    expect(unauthorizedJordan.ok).toBe(false)
+    const unauthorizedNewbie = recordEventAttendanceOrRole(comm.state, 'mem-newbie', 'evt-onboarding-sync', 'mem-newbie', 'attendee')
+    expect(unauthorizedNewbie.ok).toBe(false)
+
+    // Authorised stewards/managers (Marcus, Maya, Elena) can verify attendance
+    const attMaya = recordEventAttendanceOrRole(comm.state, 'mem-maya', 'evt-forge-clinic', 'mem-kaito', 'support')
+    expect(attMaya.ok).toBe(true)
+
+    const attElena = recordEventAttendanceOrRole(comm.state, 'mem-elena', 'evt-forge-clinic', 'mem-soren', 'host')
+    expect(attElena.ok).toBe(true)
+
+    // Event attendance recording by Marcus awards +5 XP and +1 CP and marks attendance
     const att = recordEventAttendanceOrRole(comm.state, 'mem-marcus', 'evt-onboarding-sync', 'mem-newbie', 'attendee')
     expect(att.ok).toBe(true)
     if (att.ok) {
       expect(att.data.xpAwarded).toBe(5)
       expect(att.data.cpAwarded).toBe(1)
+      // Already-attended RSVP cannot be cancelled afterward
+      const cancelAttended = rsvpEvent(att.state, 'mem-newbie', 'evt-onboarding-sync', 'attendee')
+      expect(cancelAttended.ok).toBe(false)
     }
   })
 
@@ -395,7 +426,7 @@ describe('The Arena 10 Critical User Journeys', () => {
     expect(deriveXpBalance('mem-jordan', s.xpTransactions).lifetimeXp).toBe(jordanBefore.lifetimeXp)
 
     // Switch context to org
-    const sw = switchActiveOrganisation(s, orgRes.data.id)
+    const sw = switchActiveOrganisation(s, orgRes.data.id, 'mem-jordan')
     expect(sw.ok).toBe(true)
     if (sw.ok) s = sw.state
     expect(s.activeOrganisationId).toBe(orgRes.data.id)
@@ -427,4 +458,425 @@ describe('The Arena 10 Critical User Journeys', () => {
     expect(asc.ok).toBe(true)
     if (asc.ok) expect(asc.data.ascendancyRank).toBe('Strategos')
   })
+
+  it('Phase 1 Invariants: rejects funded mission with maxContributors > capacity, blocks past-event verification, and requires all 5 onboarding steps to graduate', () => {
+    // 1. Funded mission capacity invariant
+    const invalidCap = createMission(
+      INITIAL_ARENA_STATE,
+      'mem-jordan',
+      baseCreateInput({ isFunded: true, capacity: 1, maxContributors: 3 }),
+    )
+    expect(invalidCap.ok).toBe(false)
+
+    // 2. Past event verification guard
+    const pastEvent = INITIAL_ARENA_STATE.events.find((e) => e.isPast)
+    expect(pastEvent).toBeTruthy()
+    if (pastEvent) {
+      const pastVerify = recordEventAttendanceOrRole(
+        INITIAL_ARENA_STATE,
+        'mem-marcus',
+        pastEvent.id,
+        'mem-newbie',
+        'attendee',
+      )
+      expect(pastVerify.ok).toBe(false)
+    }
+
+    // 3. Onboarding stays active until all 5 checklist steps are completed
+    let s = INITIAL_ARENA_STATE
+    const onb = completeOrientationAndRules(s, 'mem-newbie')
+    expect(onb.ok).toBe(true)
+    if (!onb.ok) return
+    s = onb.state
+    const hs = updateMemberHouses(s, 'mem-newbie', 'forge-masters', null)
+    expect(hs.ok).toBe(true)
+    if (!hs.ok) return
+    s = hs.state
+    // Previously graduated at 2/5 — must remain 'newbie' until 5/5 completed
+    expect(s.members.find((m) => m.id === 'mem-newbie')?.onboardingStage).toBe('newbie')
+
+    // Complete remaining steps (Academy, Intro mission, Profile) -> graduates to 'completed'
+    const acad = completeAcademyLesson(s, 'mem-newbie', 'les-f1-1', 1)
+    expect(acad.ok).toBe(true)
+    if (!acad.ok) return
+    s = acad.state
+    expect(s.members.find((m) => m.id === 'mem-newbie')?.onboardingStage).toBe('newbie')
+
+    const intro = joinOrApplyMission(s, 'mem-newbie', 'mis-intro')
+    expect(intro.ok).toBe(true)
+    if (!intro.ok) return
+    s = intro.state
+    expect(s.members.find((m) => m.id === 'mem-newbie')?.onboardingStage).toBe('newbie')
+
+    // Simulate step 3 profile save
+    const newbie = s.members.find((m) => m.id === 'mem-newbie')!
+    expect(newbie.onboardingChecklist.profileGuided).toBe(false)
+    const prof = updateMemberProfile(s, 'mem-newbie', { bio: 'Completed Spartan bio.' })
+    expect(prof.ok).toBe(true)
+    if (!prof.ok) return
+    expect(prof.data.onboardingChecklist.profileGuided).toBe(true)
+    expect(prof.data.onboardingStage).toBe('completed')
+  })
+
+  it('Phase 2 Invariants: discussion creation unlocks strictly at Level 15 regardless of Ascendancy rank while all Spartans can reply', () => {
+    // Seeded Maya is Strategos at 5,600 XP (Level 14: threshold 5200..5949) -> blocked below Level 15
+    const mayaBlocked = createDiscussion(INITIAL_ARENA_STATE, 'mem-maya', {
+      title: 'Strategos Below Level 15 Attempt',
+      topicTag: 'Governance',
+      houseId: 'forge-masters',
+      body: 'Should be rejected because lifetime XP is Level 14.',
+    })
+    expect(mayaBlocked.ok).toBe(false)
+
+    // Register a plain Spartan and test exact Level 14 (5,949 XP), Level 15 (5,950 XP), and Level 16 (6,750 XP)
+    const reg = registerUnifiedAccount(INITIAL_ARENA_STATE, {
+      displayName: 'Tariq Mensah',
+      username: 'tariq.mensah',
+      email: 'tariq@arena.demo',
+    })
+    expect(reg.ok).toBe(true)
+    if (!reg.ok) return
+    let s = reg.state
+    const spartanId = reg.data.id
+    expect(reg.data.ascendancyRank).toBe('Spartan')
+
+    // Level 1 Spartan can reply to an existing discussion, cannot create one
+    const firstDiscId = s.discussions[0]!.id
+    const spartanCreateBlocked = createDiscussion(s, spartanId, {
+      title: 'Level 1 Discussion Attempt',
+      topicTag: 'Community',
+      houseId: null,
+      body: 'Blocked at Level 1.',
+    })
+    expect(spartanCreateBlocked.ok).toBe(false)
+    const spartanReply = addDiscussionReply(s, spartanId, firstDiscId, 'Level 1 Spartan reply works!')
+    expect(spartanReply.ok).toBe(true)
+
+    // Grant 5,949 XP -> still Level 14 -> createDiscussion blocked
+    const toL14 = adminAdjustXp(s, 'mem-marcus', spartanId, 5949, 'Level 14 boundary test')
+    expect(toL14.ok).toBe(true)
+    if (!toL14.ok) return
+    s = toL14.state
+    expect(
+      createDiscussion(s, spartanId, {
+        title: 'Boundary Level 14 Attempt',
+        topicTag: 'Community',
+        houseId: null,
+        body: 'Must fail at 5,949 XP (Level 14).',
+      }).ok,
+    ).toBe(false)
+
+    // Grant +1 XP -> exact 5,950 XP (Level 15) -> plain Spartan (non-Vanguard) can create discussions
+    const toL15 = adminAdjustXp(s, 'mem-marcus', spartanId, 1, 'Cross Level 15 threshold')
+    expect(toL15.ok).toBe(true)
+    if (!toL15.ok) return
+    s = toL15.state
+    const l15Allowed = createDiscussion(s, spartanId, {
+      title: 'Level 15 Spartan Discussion',
+      topicTag: 'Community',
+      houseId: 'forge-masters',
+      body: 'Unlocked at Level 15 without Vanguard rank.',
+    })
+    expect(l15Allowed.ok).toBe(true)
+    if (!l15Allowed.ok) return
+    s = l15Allowed.state
+
+    // Grant +800 XP -> 6,750 XP (Level 16) -> still allowed
+    const toL16 = adminAdjustXp(s, 'mem-marcus', spartanId, 800, 'Reach Level 16')
+    expect(toL16.ok).toBe(true)
+    if (!toL16.ok) return
+    s = toL16.state
+    const l16Allowed = createDiscussion(s, spartanId, {
+      title: 'Level 16 Discussion',
+      topicTag: 'Architecture',
+      houseId: 'seers',
+      body: 'Allowed at Level 16.',
+    })
+    expect(l16Allowed.ok).toBe(true)
+  })
+
+  it('Stage 3 Invariants: enforces Spartan membership on discussion create/reply with no Visitor or Admin bypass', () => {
+    const firstDiscId = INITIAL_ARENA_STATE.discussions[0]!.id
+
+    // Unknown/visitor actor cannot create or reply
+    expect(
+      createDiscussion(INITIAL_ARENA_STATE, 'visitor-unknown', {
+        title: 'Anonymous Discussion',
+        topicTag: 'Community',
+        houseId: null,
+        body: 'Should fail cleanly.',
+      }).ok,
+    ).toBe(false)
+    expect(addDiscussionReply(INITIAL_ARENA_STATE, 'visitor-unknown', firstDiscId, 'Anonymous reply').ok).toBe(false)
+
+    // Even if a member record had high XP + platform.admin but membershipStatus === 'visitor', both create and reply must fail
+    const visitorRecordState = {
+      ...INITIAL_ARENA_STATE,
+      members: INITIAL_ARENA_STATE.members.map((m) =>
+        m.id === 'mem-marcus' ? { ...m, membershipStatus: 'visitor' as const } : m,
+      ),
+    }
+    expect(
+      createDiscussion(visitorRecordState, 'mem-marcus', {
+        title: 'Visitor Record Create Attempt',
+        topicTag: 'Governance',
+        houseId: null,
+        body: 'Visitors cannot create even with Level 15+ XP.',
+      }).ok,
+    ).toBe(false)
+    expect(addDiscussionReply(visitorRecordState, 'mem-marcus', firstDiscId, 'Visitor reply attempt').ok).toBe(false)
+
+    // Marcus as Spartan Level 15+ can create & reply normally
+    expect(
+      createDiscussion(INITIAL_ARENA_STATE, 'mem-marcus', {
+        title: 'Spartan L15+ Discussion',
+        topicTag: 'Governance',
+        houseId: 'scribes',
+        body: 'Allowed for L15+ Spartans.',
+      }).ok,
+    ).toBe(true)
+  })
+
+  it('Stage 3 Invariants: enforces missionAlerts centrally across mission/submission/dispute flows without suppressing non-mission alerts or deleting records', () => {
+    // 1. Disable missionAlerts on Jordan & Kaito, plus disable public visibility flags on Kaito
+    let s = INITIAL_ARENA_STATE
+    const privJordan = updateAccountPrivacy(s, 'mem-jordan', { missionAlerts: false })
+    expect(privJordan.ok).toBe(true)
+    if (!privJordan.ok) return
+    s = privJordan.state
+
+    const privKaito = updateAccountPrivacy(s, 'mem-kaito', {
+      missionAlerts: false,
+      publicProfileVisible: false,
+      showContributionsPublicly: false,
+    })
+    expect(privKaito.ok).toBe(true)
+    if (!privKaito.ok) return
+    s = privKaito.state
+
+    // Verify disabling publicProfileVisible and showContributionsPublicly preserves Kaito's records & XP
+    expect(deriveXpBalance('mem-kaito', s.xpTransactions).lifetimeXp).toBe(
+      deriveXpBalance('mem-kaito', INITIAL_ARENA_STATE.xpTransactions).lifetimeXp,
+    )
+    expect(s.contributionRecords.filter((c) => c.memberId === 'mem-kaito').length).toBeGreaterThan(0)
+
+    const jordanCountBefore = s.notifications.filter((n) => n.memberId === 'mem-jordan').length
+    const kaitoCountBefore = s.notifications.filter((n) => n.memberId === 'mem-kaito').length
+
+    // 2. Mission creation & cancellation refund must NOT notify Jordan while missionAlerts === false
+    const created = createMission(
+      s,
+      'mem-jordan',
+      baseCreateInput({ rewardPerContributorXp: 200, maxContributors: 1, publishNow: true }),
+    )
+    expect(created.ok).toBe(true)
+    if (!created.ok) return
+    s = created.state
+
+    const cancelled = cancelOrExpireMission(s, 'mem-jordan', created.data.id, 'cancelled')
+    expect(cancelled.ok).toBe(true)
+    if (!cancelled.ok) return
+    s = cancelled.state
+    expect(s.notifications.filter((n) => n.memberId === 'mem-jordan').length).toBe(jordanCountBefore)
+
+    // 3. Submission review & dispute resolution (overturned) must NOT notify Kaito while missionAlerts === false
+    const revSub = reviewSubmission(s, 'mem-jordan', 'sub-2', 'rejected', 'Needs fuller benchmark output.')
+    expect(revSub.ok).toBe(true)
+    if (!revSub.ok) return
+    s = revSub.state
+    expect(s.notifications.filter((n) => n.memberId === 'mem-kaito').length).toBe(kaitoCountBefore)
+
+    const resolvedDispute = resolveDispute(
+      s,
+      'mem-elena',
+      'disp-1',
+      'resolved_overturned',
+      'Overturned after checking timestamp.',
+    )
+    expect(resolvedDispute.ok).toBe(true)
+    if (!resolvedDispute.ok) return
+    s = resolvedDispute.state
+    const kaitoAddedAfterDispute = s.notifications
+      .filter((n) => n.memberId === 'mem-kaito')
+      .slice(0, s.notifications.filter((n) => n.memberId === 'mem-kaito').length - kaitoCountBefore)
+    // Mission dispute notification is suppressed, while non-mission achievement unlock still fires
+    expect(kaitoAddedAfterDispute.some((n) => n.title.includes('Dispute Resolved'))).toBe(false)
+    expect(kaitoAddedAfterDispute.every((n) => n.category === 'achievement')).toBe(true)
+    const kaitoCountPostDispute = s.notifications.filter((n) => n.memberId === 'mem-kaito').length
+
+    // 4. Non-mission system/governance notifications (appointAscendancy, adminAdjustXp) MUST still fire
+    const adj = adminAdjustXp(s, 'mem-marcus', 'mem-kaito', 10, 'Calibration check')
+    expect(adj.ok).toBe(true)
+    if (!adj.ok) return
+    s = adj.state
+    expect(s.notifications.filter((n) => n.memberId === 'mem-kaito').length).toBe(kaitoCountPostDispute + 1)
+
+    const asc = appointAscendancy(s, 'mem-marcus', 'mem-jordan', 'Vanguard', 'Community stewardship recognition')
+    expect(asc.ok).toBe(true)
+    if (!asc.ok) return
+    s = asc.state
+    expect(s.notifications.filter((n) => n.memberId === 'mem-jordan').length).toBe(jordanCountBefore + 1)
+  })
+
+  it('Stage 3 Auth & Access Control: restricts demo switching, email login, org switching, mutations, storage hydration, and redirect validation', () => {
+    // 1. Unauthenticated state cannot call switchDemoPersona or switch to visitor (null)
+    expect(switchDemoPersona(INITIAL_ARENA_STATE, 'mem-jordan').ok).toBe(false)
+    const loggedInJordan = signInDemoByEmail(INITIAL_ARENA_STATE, 'jordan.davis@arena.demo')
+    expect(loggedInJordan.ok).toBe(true)
+    if (!loggedInJordan.ok) return
+    expect(switchDemoPersona(loggedInJordan.state, null).ok).toBe(false)
+
+    // Authenticated Spartan can switch to another Spartan, but never to a non-spartan record
+    expect(switchDemoPersona(loggedInJordan.state, 'mem-maya').ok).toBe(true)
+    const visitorTargetState = {
+      ...loggedInJordan.state,
+      members: loggedInJordan.state.members.map((m) =>
+        m.id === 'mem-maya' ? { ...m, membershipStatus: 'visitor' as const } : m,
+      ),
+    }
+    expect(switchDemoPersona(visitorTargetState, 'mem-maya').ok).toBe(false)
+    expect(signInDemoByEmail(visitorTargetState, 'maya.kim@arena.demo').ok).toBe(false)
+
+    // 2. signOutAccount clears both currentMemberId and activeOrganisationId
+    const orgCreated = createOrganisation(loggedInJordan.state, 'mem-jordan', {
+      name: 'Auth Guard Org',
+      kind: 'Team',
+      ecosystem: 'Ethereum',
+      tagline: 'Security check',
+      description: 'Auth check org',
+      website: 'https://authguard.demo',
+    })
+    expect(orgCreated.ok).toBe(true)
+    if (!orgCreated.ok) return
+    expect(orgCreated.state.activeOrganisationId).toBe(orgCreated.data.id)
+
+    // Non-member Maya cannot switch into Jordan's org; unauthenticated state cannot switch org
+    expect(switchActiveOrganisation(orgCreated.state, orgCreated.data.id, 'mem-maya').ok).toBe(false)
+    expect(switchActiveOrganisation({ ...orgCreated.state, currentMemberId: null }, orgCreated.data.id).ok).toBe(false)
+
+    const signedOut = signOutAccount(orgCreated.state)
+    expect(signedOut.ok).toBe(true)
+    if (!signedOut.ok) return
+    expect(signedOut.state.currentMemberId).toBeNull()
+    expect(signedOut.state.activeOrganisationId).toBeNull()
+
+    // 3. Service mutations reject visitor-status or unknown member IDs
+    expect(createMission(visitorTargetState, 'mem-maya', baseCreateInput()).ok).toBe(false)
+    expect(updateMemberProfile(visitorTargetState, 'mem-maya', { bio: 'Tampered' }).ok).toBe(false)
+    expect(rsvpEvent(visitorTargetState, 'mem-maya', 'evt-onboarding-sync').ok).toBe(false)
+    expect(completeAcademyLesson(visitorTargetState, 'mem-maya', 'les-f1-1', 1).ok).toBe(false)
+    expect(toggleBookmark(visitorTargetState, 'mem-maya', 'mission', 'mis-intro').ok).toBe(false)
+    expect(adminAdjustXp(visitorTargetState, 'mem-maya', 'mem-jordan', 10, 'Unauthorized').ok).toBe(false)
+
+    // 4. loadArenaState sanitizes missing/visitor currentMemberId and invalid activeOrganisationId while preserving data
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(
+        ARENA_STORAGE_KEY,
+        JSON.stringify({
+          ...orgCreated.state,
+          currentMemberId: 'mem-does-not-exist',
+          activeOrganisationId: orgCreated.data.id,
+        }),
+      )
+      const sanitizedMissing = loadArenaState()
+      expect(sanitizedMissing.currentMemberId).toBeNull()
+      expect(sanitizedMissing.activeOrganisationId).toBeNull()
+      expect(sanitizedMissing.organisations.some((o) => o.id === orgCreated.data.id)).toBe(true)
+
+      window.localStorage.setItem(
+        ARENA_STORAGE_KEY,
+        JSON.stringify({
+          ...visitorTargetState,
+          currentMemberId: 'mem-maya',
+          activeOrganisationId: orgCreated.data.id,
+        }),
+      )
+      const sanitizedVisitor = loadArenaState()
+      expect(sanitizedVisitor.currentMemberId).toBeNull()
+      expect(sanitizedVisitor.activeOrganisationId).toBeNull()
+
+      window.localStorage.removeItem(ARENA_STORAGE_KEY)
+    }
+
+    // 5. resolveSafeRedirect preserves valid internal paths + query + hash and rejects external/unsafe/auth paths (including trailing slashes)
+    expect(resolveSafeRedirect({ pathname: '/explore', search: '?tab=discussions', hash: '#top' })).toBe(
+      '/explore?tab=discussions#top',
+    )
+    expect(resolveSafeRedirect('/explore/?tab=missions#featured')).toBe('/explore/?tab=missions#featured')
+    expect(resolveSafeRedirect('/missions/mis-1?view=review#submit')).toBe('/missions/mis-1?view=review#submit')
+    expect(resolveSafeRedirect('https://evil.example/phish')).toBe('/dashboard')
+    expect(resolveSafeRedirect('//evil.example/phish')).toBe('/dashboard')
+    expect(resolveSafeRedirect('/\\evil.example')).toBe('/dashboard')
+    expect(resolveSafeRedirect('javascript:alert(1)')).toBe('/dashboard')
+    expect(resolveSafeRedirect({ pathname: '/login', search: '?next=/dashboard', hash: '' })).toBe('/dashboard')
+    expect(resolveSafeRedirect('/login/')).toBe('/dashboard')
+    expect(resolveSafeRedirect('/register')).toBe('/dashboard')
+    expect(resolveSafeRedirect('/register/')).toBe('/dashboard')
+    expect(resolveSafeRedirect('/signup')).toBe('/dashboard')
+    expect(resolveSafeRedirect('/signup/')).toBe('/dashboard')
+    expect(resolveSafeRedirect('/login/?next=/missions#top')).toBe('/dashboard')
+    expect(resolveSafeRedirect('/LOGIN///')).toBe('/dashboard')
+    expect(resolveSafeRedirect({ pathname: '/signup/', search: '?from=landing', hash: '#cta' })).toBe('/dashboard')
+  })
+
+  it('enforces Spartan ownership and authentication guards on notification read mutations', () => {
+    // Seed a second unread notification for mem-jordan via an authentic XP adjustment
+    const awarded = adminAdjustXp(INITIAL_ARENA_STATE, 'mem-marcus', 'mem-jordan', 25, 'Verified audit check')
+    expect(awarded.ok).toBe(true)
+    if (!awarded.ok) return
+
+    const jordanNotifications = awarded.state.notifications.filter((n) => n.memberId === 'mem-jordan')
+    expect(jordanNotifications.length).toBeGreaterThanOrEqual(2)
+    expect(jordanNotifications.every((n) => !n.read)).toBe(true)
+
+    const [firstJordanNotif, secondJordanNotif] = jordanNotifications
+    const mayaUnreadBefore = awarded.state.notifications.find((n) => n.id === 'notif-3')
+    expect(mayaUnreadBefore?.memberId).toBe('mem-maya')
+    expect(mayaUnreadBefore?.read).toBe(false)
+
+    // 1. Unauthenticated actor (currentMemberId null / omitted / empty) is rejected without mutating state
+    const unauthState = { ...awarded.state, currentMemberId: null }
+    expect(markNotificationRead(unauthState, firstJordanNotif.id).ok).toBe(false)
+    expect(markNotificationRead(unauthState, firstJordanNotif.id, null).ok).toBe(false)
+    expect(markNotificationRead(unauthState, firstJordanNotif.id, '').ok).toBe(false)
+    expect(markAllNotificationsRead(unauthState).ok).toBe(false)
+    expect(markAllNotificationsRead(unauthState, null).ok).toBe(false)
+
+    // 2. Invalid/unknown member ID or non-Spartan visitor actor is rejected
+    expect(markNotificationRead(awarded.state, firstJordanNotif.id, 'mem-does-not-exist').ok).toBe(false)
+    expect(markAllNotificationsRead(awarded.state, 'mem-does-not-exist').ok).toBe(false)
+
+    const visitorState = {
+      ...awarded.state,
+      members: awarded.state.members.map((m) =>
+        m.id === 'mem-maya' ? { ...m, membershipStatus: 'visitor' as const } : m,
+      ),
+    }
+    expect(markNotificationRead(visitorState, 'notif-3', 'mem-maya').ok).toBe(false)
+    expect(markAllNotificationsRead(visitorState, 'mem-maya').ok).toBe(false)
+
+    // 3. Cross-member access: authenticated Spartan cannot mark another member's notification read
+    const crossMember = markNotificationRead(awarded.state, 'notif-3', 'mem-jordan')
+    expect(crossMember.ok).toBe(false)
+    expect(awarded.state.notifications.find((n) => n.id === 'notif-3')?.read).toBe(false)
+
+    // 4. Authenticated Spartan marks one of their own notifications read selectively
+    const singleRead = markNotificationRead(awarded.state, firstJordanNotif.id, 'mem-jordan')
+    expect(singleRead.ok).toBe(true)
+    if (!singleRead.ok) return
+    expect(singleRead.state.notifications.find((n) => n.id === firstJordanNotif.id)?.read).toBe(true)
+    expect(singleRead.state.notifications.find((n) => n.id === secondJordanNotif.id)?.read).toBe(false)
+    expect(singleRead.state.notifications.find((n) => n.id === 'notif-3')?.read).toBe(false)
+
+    // 5. Authenticated Spartan marks all of their own notifications read without affecting other members
+    const allRead = markAllNotificationsRead(singleRead.state, 'mem-jordan')
+    expect(allRead.ok).toBe(true)
+    if (!allRead.ok) return
+    expect(
+      allRead.state.notifications.filter((n) => n.memberId === 'mem-jordan').every((n) => n.read),
+    ).toBe(true)
+    expect(allRead.state.notifications.find((n) => n.id === 'notif-3')?.read).toBe(false)
+    expect(allRead.state.notifications.find((n) => n.id === 'notif-4')?.read).toBe(false)
+  })
 })
+

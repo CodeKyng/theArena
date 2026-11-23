@@ -6,6 +6,9 @@ import PageScaffold from '../components/PageScaffold'
 import PermissionGate from '../components/PermissionGate'
 import {
   EVIDENCE_TYPE_LABELS,
+  formatParticipationFormat,
+  formatVerificationStatus,
+  getHouseName,
   MISSION_CATEGORIES,
   PARTICIPATION_FORMATS,
 } from '../domain/constants'
@@ -21,6 +24,23 @@ const STEP_LABELS = [
   '6. Timeline & Scope',
   '7. Review & Publish',
 ]
+
+function formatRewardBandLabel(band: string): string {
+  switch (band) {
+    case 'micro':
+      return 'Micro'
+    case 'standard':
+      return 'Standard'
+    case 'substantial':
+      return 'Substantial'
+    case 'major':
+      return 'Major'
+    case 'above_major':
+      return 'High-Value (>1,500 XP)'
+    default:
+      return band
+  }
+}
 
 export default function MissionCreatePage() {
   const { state, currentMember, xpBalance, memberOrganisations, createMission } = useArena()
@@ -63,6 +83,7 @@ export default function MissionCreatePage() {
   const bandInfo = classifyMissionBand(isFunded ? rewardPerContributorXp : 0, state.config.rewardBands)
   const totalReserveNeeded = isFunded ? Math.max(0, rewardPerContributorXp) * Math.max(1, maxContributors) : 0
   const policyCheck = validateMissionPolicy([title, description, objective, instructions, deliverablesText])
+  const houseName = getHouseName(houseId, state.houses)
 
   const toggleEvidence = (ev: EvidenceType) => {
     setRequiredEvidenceTypes((prev) =>
@@ -70,8 +91,77 @@ export default function MissionCreatePage() {
     )
   }
 
+  const validateStep = (idx: number): string | null => {
+    if (idx === 0) {
+      if (!title.trim() || !description.trim()) {
+        return 'Step 1 requires a mission title and description before continuing.'
+      }
+      const p0 = validateMissionPolicy([title, description, objective])
+      if (!p0.compliant) return p0.reason ?? 'Mission policy violation detected.'
+    } else if (idx === 1) {
+      if (capacity < 1 || !eligibilityNote.trim()) {
+        return 'Step 2 requires participant capacity of at least 1 and an eligibility note.'
+      }
+    } else if (idx === 2) {
+      const hasSteps = stepsText.split('\n').some((s) => s.trim().length > 0)
+      const hasDeliverables = deliverablesText.split('\n').some((d) => d.trim().length > 0)
+      if (!hasSteps || !hasDeliverables) {
+        return 'Step 3 requires at least one step and one deliverable.'
+      }
+      const p2 = validateMissionPolicy([title, description, objective, instructions, deliverablesText])
+      if (!p2.compliant) return p2.reason ?? 'Mission policy violation detected.'
+    } else if (idx === 3) {
+      if (requiredEvidenceTypes.length === 0 || !submissionInstructions.trim() || !verificationCriteria.trim()) {
+        return 'Step 4 requires at least one evidence type, submission instructions, and verification criteria.'
+      }
+    } else if (idx === 4) {
+      if (isFunded && (rewardPerContributorXp <= 0 || maxContributors < 1)) {
+        return 'Step 5 requires positive XP reward and at least 1 contributor when mission funding is enabled.'
+      }
+      if (isFunded && maxContributors > capacity) {
+        return `Max rewarded contributors (${maxContributors}) cannot exceed participant capacity (${capacity}). Increase participant capacity in Step 2 or lower max rewarded contributors.`
+      }
+    } else if (idx === 5) {
+      if (!startDate || !deadline) {
+        return 'Step 6 requires both a start date and a deadline.'
+      }
+      if (deadline < startDate) {
+        return 'Deadline must be on or after the start date.'
+      }
+    }
+    return null
+  }
+
+  const goToStep = (targetIdx: number) => {
+    setFormError(null)
+    if (targetIdx <= step) {
+      setStep(targetIdx)
+      return
+    }
+    for (let i = 0; i < targetIdx; i += 1) {
+      const err = validateStep(i)
+      if (err) {
+        setStep(i)
+        setFormError(err)
+        return
+      }
+    }
+    setStep(targetIdx)
+  }
+
   const submitMission = (publishNow: boolean) => {
     setFormError(null)
+    if (publishNow) {
+      for (let i = 0; i < STEP_LABELS.length - 1; i += 1) {
+        const err = validateStep(i)
+        if (err) {
+          setStep(i)
+          setFormError(err)
+          return
+        }
+      }
+    }
+
     const res = createMission({
       title,
       description,
@@ -87,7 +177,7 @@ export default function MissionCreatePage() {
       sponsorOrganisationId: sponsorOrganisationId || undefined,
       participationFormat,
       eligibilityNote,
-      capacity: Math.max(maxContributors, capacity),
+      capacity,
       difficulty,
       platformContext,
       locationContext,
@@ -111,9 +201,9 @@ export default function MissionCreatePage() {
 
   return (
     <PageScaffold
-      section="Guided 7-Step Wizard"
+      section="Mission Creation"
       name="Create a Mission"
-      description={`Available Spendable XP: ${xpBalance.spendableXp.toLocaleString()} XP (Lifetime XP is never reduced when funding missions).`}
+      description={`Available Spendable XP: ${xpBalance.spendableXp.toLocaleString()} XP (funding missions never reduces Lifetime XP).`}
       actions={
         <Link className="button button-quiet button-small" to="/missions">
           <ArrowLeft size={14} /> Back to Missions
@@ -128,7 +218,7 @@ export default function MissionCreatePage() {
                 key={label}
                 type="button"
                 className={`arena-tab ${step === idx ? 'active' : ''}`}
-                onClick={() => setStep(idx)}
+                onClick={() => goToStep(idx)}
               >
                 {label}
               </button>
@@ -137,7 +227,7 @@ export default function MissionCreatePage() {
 
           <div className="form-panel" style={{ maxWidth: 880 }}>
             {formError && (
-              <div className="arena-notice arena-notice-danger" style={{ marginBottom: 14 }}>
+              <div className="arena-notice arena-notice-danger" role="alert" style={{ marginBottom: 14 }}>
                 <AlertTriangle size={16} />
                 <span>{formError}</span>
               </div>
@@ -189,10 +279,10 @@ export default function MissionCreatePage() {
                 <label>
                   Sponsor Organisation (optional)
                   <select value={sponsorOrganisationId} onChange={(e) => setSponsorOrganisationId(e.target.value)}>
-                    <option value="">Personal Spartan Funded</option>
+                    <option value="">Personal Account Funded</option>
                     {memberOrganisations.map((org) => (
                       <option key={org.id} value={org.id}>
-                        {org.name} ({org.verificationStatus})
+                        {org.name} ({formatVerificationStatus(org.verificationStatus)})
                       </option>
                     ))}
                   </select>
@@ -213,7 +303,7 @@ export default function MissionCreatePage() {
             {step === 1 && (
               <div className="form-grid">
                 <label>
-                  Mission Category (10 Canonical)
+                  Mission Category
                   <select value={category} onChange={(e) => setCategory(e.target.value as MissionCategory)}>
                     {MISSION_CATEGORIES.map((c) => (
                       <option key={c} value={c}>{c}</option>
@@ -283,7 +373,7 @@ export default function MissionCreatePage() {
                           alignItems: 'center',
                           gap: 8,
                           padding: 9,
-                          border: '1px solid var(--arena-border)',
+                          border: '1px solid var(--arena-line)',
                           borderRadius: 7,
                           background: requiredEvidenceTypes.includes(evKey) ? '#eef5ff' : '#fff',
                         }}
@@ -319,7 +409,7 @@ export default function MissionCreatePage() {
                     checked={isFunded}
                     onChange={(e) => setIsFunded(e.target.checked)}
                   />
-                  Fund mission with Spendable XP escrow (recommended; uncheck for non-rewarded mission)
+                  Fund mission with Spendable XP escrow (uncheck for an unrewarded mission)
                 </label>
 
                 {isFunded && (
@@ -347,13 +437,13 @@ export default function MissionCreatePage() {
 
                     <div className="full-field arena-notice arena-notice-info" style={{ flexDirection: 'column', gap: 6 }}>
                       <div>
-                        <b>Reward Band Classification:</b> {bandInfo.band.toUpperCase()} · CP awarded per approval: <b>+{bandInfo.cpValue} CP</b>
+                        <b>Reward Band:</b> {formatRewardBandLabel(bandInfo.band)} · CP awarded per approval: <b>+{bandInfo.cpValue} CP</b>
                       </div>
                       <div>
                         Bands: Micro (25–75 XP / 5 CP) · Standard (100–250 XP / 15 CP) · Substantial (300–750 XP / 30 CP) · Major (800–1,500 XP / 50 CP).
                       </div>
                       <div>
-                        <b>Total Escrow Reservation on Publish:</b> {totalReserveNeeded.toLocaleString()} XP (Your Spendable XP: {xpBalance.spendableXp.toLocaleString()} XP)
+                        <b>Total XP Reserved on Publish:</b> {totalReserveNeeded.toLocaleString()} XP (Your Spendable XP: {xpBalance.spendableXp.toLocaleString()} XP)
                       </div>
                     </div>
 
@@ -361,7 +451,7 @@ export default function MissionCreatePage() {
                       <div className="full-field arena-notice arena-notice-warn">
                         <AlertTriangle size={16} />
                         <span>
-                          <b>Above-Major Threshold (&gt;1,500 XP):</b> Publishing reserves {totalReserveNeeded} XP and places this mission in <b>Pending Control Room Review</b> before contributors can join.
+                          <b>High-Value Mission (&gt;1,500 XP):</b> Publishing reserves {totalReserveNeeded} XP and places this mission in <b>Pending Review</b> for Control Room approval before contributors can join.
                         </span>
                       </div>
                     )}
@@ -371,6 +461,15 @@ export default function MissionCreatePage() {
                         <AlertTriangle size={16} />
                         <span>
                           Insufficient Spendable XP ({xpBalance.spendableXp} available vs {totalReserveNeeded} required). Lower the reward or save as Draft.
+                        </span>
+                      </div>
+                    )}
+
+                    {maxContributors > capacity && (
+                      <div className="full-field arena-notice arena-notice-danger">
+                        <AlertTriangle size={16} />
+                        <span>
+                          Max rewarded contributors ({maxContributors}) exceeds participant capacity ({capacity}) set in Step 2. Increase participant capacity or lower max contributors.
                         </span>
                       </div>
                     )}
@@ -398,7 +497,7 @@ export default function MissionCreatePage() {
                   <input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
                 </label>
                 <label className="full-field">
-                  Restrictions &amp; Policy Guardrails (one per line)
+                  Restrictions &amp; Fair-Play Rules (one per line)
                   <textarea rows={3} value={restrictionsText} onChange={(e) => setRestrictionsText(e.target.value)} />
                 </label>
               </div>
@@ -409,21 +508,21 @@ export default function MissionCreatePage() {
                 <div className="arena-notice arena-notice-success">
                   <CheckCircle2 size={16} />
                   <div>
-                    <b>Ready to Save or Publish:</b> "{title || 'Untitled Mission'}" · House {houseId} · {category} · {participationFormat} · {isFunded ? `${totalReserveNeeded} XP Escrow (${rewardPerContributorXp} × ${maxContributors})` : 'Non-rewarded'}.
+                    <b>Ready to Save or Publish:</b> "{title || 'Untitled Mission'}" · House {houseName} · {category} · {formatParticipationFormat(participationFormat)} · {isFunded ? `${totalReserveNeeded} XP Escrow (${rewardPerContributorXp} × ${maxContributors})` : 'Unrewarded'}.
                   </div>
                 </div>
-                <p style={{ margin: 0, fontSize: 13.5, color: 'var(--arena-ink-muted)' }}>
-                  Saving as <b>Draft</b> reserves 0 XP. Clicking <b>Publish &amp; Reserve XP</b> immediately locks {totalReserveNeeded} Spendable XP into mission escrow (refunded automatically if cancelled or expired unspent).
+                <p style={{ margin: 0, fontSize: 13.5, color: 'var(--arena-muted)' }}>
+                  Saving as <b>Draft</b> reserves 0 XP. Clicking <b>Publish &amp; Reserve XP</b> reserves {totalReserveNeeded} Spendable XP in mission escrow (refunded automatically if cancelled or expired unspent).
                 </p>
               </div>
             )}
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginTop: 22, paddingTop: 16, borderTop: '1px solid var(--arena-border)', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginTop: 22, paddingTop: 16, borderTop: '1px solid var(--arena-line)', flexWrap: 'wrap' }}>
               <button
                 type="button"
                 className="button button-quiet"
                 disabled={step === 0}
-                onClick={() => setStep((s) => Math.max(0, s - 1))}
+                onClick={() => goToStep(Math.max(0, step - 1))}
               >
                 Previous Step
               </button>
@@ -440,7 +539,7 @@ export default function MissionCreatePage() {
                   <button
                     type="button"
                     className="button button-bright"
-                    onClick={() => setStep((s) => Math.min(STEP_LABELS.length - 1, s + 1))}
+                    onClick={() => goToStep(Math.min(STEP_LABELS.length - 1, step + 1))}
                   >
                     Next Step <ArrowRight size={14} />
                   </button>
@@ -448,7 +547,7 @@ export default function MissionCreatePage() {
                   <button
                     type="button"
                     className="button button-bright"
-                    disabled={!policyCheck.compliant || (isFunded && totalReserveNeeded > xpBalance.spendableXp)}
+                    disabled={!policyCheck.compliant || (isFunded && (totalReserveNeeded > xpBalance.spendableXp || maxContributors > capacity))}
                     onClick={() => submitMission(true)}
                   >
                     {bandInfo.requiresAdditionalApproval

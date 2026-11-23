@@ -15,12 +15,14 @@ import {
   X,
 } from 'lucide-react'
 import { useArena } from '../app/arenaContext'
+import { DISCUSSION_UNLOCK_LEVEL } from '../domain/constants'
 import type { EventKind, ExploreOpportunity, ExploreProject, ExploreResource, HouseId } from '../domain/types'
 
 export default function GlobalModals() {
   const {
     state,
     currentMember,
+    levelProgress,
     can,
     searchModalOpen,
     setSearchModalOpen,
@@ -34,6 +36,8 @@ export default function GlobalModals() {
     createDiscussion,
   } = useArena()
   const navigate = useNavigate()
+  const isSpartan = currentMember?.membershipStatus === 'spartan'
+  const canCreateDiscussion = Boolean(isSpartan && levelProgress.level >= DISCUSSION_UNLOCK_LEVEL)
 
   const [query, setQuery] = useState('')
 
@@ -60,7 +64,7 @@ export default function GlobalModals() {
       .filter((h) => match(`${h.name} ${h.tagline} ${h.focusAreas.join(' ')}`))
       .slice(0, 3)
     const people = state.members
-      .filter((m) => m.privacy.publicProfileVisible && match(`${m.displayName} ${m.username} ${m.headline} ${m.skills.join(' ')}`))
+      .filter((m) => (m.privacy.publicProfileVisible || m.id === currentMember?.id) && match(`${m.displayName} ${m.username} ${m.headline} ${m.skills.join(' ')}`))
       .slice(0, 4)
     const paths = state.academyPaths
       .filter((p) => match(`${p.title} ${p.subtitle} ${p.track}`))
@@ -73,7 +77,7 @@ export default function GlobalModals() {
       .slice(0, 3)
 
     return { missions, houses, people, paths, events, projects }
-  }, [query, state])
+  }, [query, state, currentMember?.id])
 
   const resetForm = () => {
     setTitle('')
@@ -156,7 +160,7 @@ export default function GlobalModals() {
         houseId,
         startsAt: new Date(eventDate).toISOString(),
         durationMinutes: 60,
-        locationOrLink: secondaryText || 'Arena Virtual Hall (Simulated)',
+        locationOrLink: secondaryText || 'Arena Virtual Hall',
         capacity: 40,
       })
       if (res.ok) {
@@ -197,7 +201,7 @@ export default function GlobalModals() {
                   autoFocus
                   type="search"
                   className="arena-input"
-                  placeholder="Search Missions, Houses, Builders, Academy, Events, Projects..."
+                  placeholder="Search missions, Houses, members, Academy, events, or projects..."
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                 />
@@ -238,7 +242,7 @@ export default function GlobalModals() {
 
               {searchResults.houses.length > 0 && (
                 <div>
-                  <div className="section-kicker" style={{ marginBottom: 6 }}>Canonical Houses</div>
+                  <div className="section-kicker" style={{ marginBottom: 6 }}>Houses</div>
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     {searchResults.houses.map((h) => (
                       <button
@@ -387,22 +391,29 @@ export default function GlobalModals() {
                   ['event', 'Event', Calendar],
                   ['discussion', 'Discussion', MessageSquare],
                 ] as const
-              ).map(([kind, label, Icon]) => (
-                <button
-                  key={kind}
-                  type="button"
-                  className={`arena-tab ${quickCreateKind === kind ? 'active' : ''}`}
-                  onClick={() => openQuickCreate(kind)}
-                >
-                  <Icon size={14} /> {label}
-                </button>
-              ))}
+              ).map(([kind, label, Icon]) => {
+                const tabDisabled = kind === 'discussion' && !canCreateDiscussion
+                return (
+                  <button
+                    key={kind}
+                    type="button"
+                    disabled={tabDisabled}
+                    className={`arena-tab ${quickCreateKind === kind ? 'active' : ''}`}
+                    title={tabDisabled ? `Discussion creation unlocks at Level ${DISCUSSION_UNLOCK_LEVEL}.` : undefined}
+                    onClick={() => {
+                      if (!tabDisabled) openQuickCreate(kind)
+                    }}
+                  >
+                    <Icon size={14} /> {label}
+                  </button>
+                )
+              })}
             </div>
 
             {quickCreateKind === 'mission' ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <p style={{ margin: 0, fontSize: 13.5, color: '#52647d' }}>
-                  Missions use the full 7-step Guided Creation Wizard with reward bands, Spendable XP escrow reservation, and anti-farming validation.
+                  Missions use a guided 7-step setup with Spendable XP rewards and review criteria.
                 </p>
                 {can('mission.create') ? (
                   <button
@@ -413,11 +424,11 @@ export default function GlobalModals() {
                       navigate('/missions/new')
                     }}
                   >
-                    Launch 7-Step Mission Wizard
+                    Open Mission Wizard
                   </button>
                 ) : (
                   <div className="arena-notice arena-notice-warn">
-                    Current persona lacks <code>mission.create</code> permission. Switch to Jordan Davis or Maya Kim, or grant it in Control Room.
+                    Your account does not have Mission Creator permission yet. In Demo Mode, switch to Jordan Davis or Maya Kim, or ask a Control Room admin.
                   </div>
                 )}
               </div>
@@ -518,8 +529,8 @@ export default function GlobalModals() {
                         : quickCreateKind === 'discussion'
                           ? 'Topic Tag'
                           : quickCreateKind === 'event'
-                            ? 'Location or Virtual Link'
-                            : 'Format Badge'}
+                            ? 'Location or Link'
+                            : 'File or Format Label'}
                   <input
                     placeholder="Short label"
                     value={secondaryText}
@@ -532,17 +543,32 @@ export default function GlobalModals() {
                   <textarea
                     required
                     rows={3}
-                    placeholder="Clear context for fellow Spartans..."
+                    placeholder="Add clear details for members..."
                     value={summary}
                     onChange={(e) => setSummary(e.target.value)}
                   />
                 </label>
 
+                {quickCreateKind === 'discussion' && !canCreateDiscussion && (
+                  <div className="full-field arena-notice arena-notice-warn" role="status">
+                    <span>
+                      <b>Discussion creation unlocks at Level {DISCUSSION_UNLOCK_LEVEL}.</b>{' '}
+                      {isSpartan
+                        ? `You are currently Level ${levelProgress.level}. You can still read and reply to discussions in Explore.`
+                        : 'Sign in as a Spartan and reach Level 15 to create discussions.'}
+                    </span>
+                  </div>
+                )}
+
                 <div className="full-field" style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
                   <button type="button" className="button button-quiet" onClick={() => openQuickCreate(null)}>
                     Cancel
                   </button>
-                  <button type="submit" className="button button-bright">
+                  <button
+                    type="submit"
+                    className="button button-bright"
+                    disabled={quickCreateKind === 'discussion' && !canCreateDiscussion}
+                  >
                     Publish {quickCreateKind}
                   </button>
                 </div>

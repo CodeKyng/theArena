@@ -1,10 +1,14 @@
 import { useState, type FormEvent } from 'react'
 import { CheckCircle2, FileText, ShieldAlert, Sliders, Users } from 'lucide-react'
 import { useArena } from '../app/arenaContext'
-import PageScaffold from '../components/PageScaffold'
 import PermissionGate from '../components/PermissionGate'
 import StatCard from '../components/StatCard'
-import { ASCENDANCY_LADDER, PERMISSION_LABELS } from '../domain/constants'
+import {
+  ASCENDANCY_LADDER,
+  formatVerificationStatus,
+  getHouseName,
+  PERMISSION_LABELS,
+} from '../domain/constants'
 import { calculateLevelProgress } from '../domain/progression'
 import type { AscendancyRank, HouseId, PermissionScope } from '../domain/types'
 
@@ -68,11 +72,7 @@ export default function ControlRoomPage() {
   }
 
   return (
-    <PageScaffold
-      section="Platform Administration"
-      name="Control Room"
-      description="Explicit Ascendancy appointment, scoped RBAC grants, high-value approvals, ledger audit, and baseline rules."
-    >
+    <div className="inner-page">
       <PermissionGate requiredAny={['platform.admin', 'finance.admin']} title="Control Room Administration">
         <div className="admin-experience">
           <div className="admin-banner">
@@ -80,7 +80,7 @@ export default function ControlRoomPage() {
               <span className="section-kicker">PLATFORM GOVERNANCE · CONTROL ROOM</span>
               <h2>Arena Control Room</h2>
               <p>
-                Explicitly appoint Ascendancy ranks (never auto-promoted by XP), manage scoped RBAC PermissionGrants, approve &gt;1,500 XP missions, verify organisations, audit ledger adjustments, and tune configurable baselines.
+                Appoint Ascendancy ranks, assign scoped member permissions, review high-value (&gt;1,500 XP) missions, verify organisations, record XP adjustments, and configure seasonal caps.
               </p>
             </div>
             <div className="admin-seal">
@@ -119,7 +119,7 @@ export default function ControlRoomPage() {
                 <StatCard
                   label="Total Spartans"
                   value={String(state.members.length)}
-                  change={`${newbiesCount} currently in Newbie onboarding`}
+                  change={`${newbiesCount} in New Spartan onboarding`}
                   icon={<Users size={16} />}
                 />
                 <StatCard
@@ -137,7 +137,7 @@ export default function ControlRoomPage() {
                 <StatCard
                   label="Audit Entries"
                   value={String(state.auditLogs.length)}
-                  change="Immutable governance trail"
+                  change="Governance log"
                   icon={<FileText size={16} />}
                 />
               </div>
@@ -161,7 +161,7 @@ export default function ControlRoomPage() {
                         <tr key={org.id}>
                           <td><b>{org.name}</b></td>
                           <td>{org.kind}</td>
-                          <td><span className="listing-kind">{org.verificationStatus}</span></td>
+                          <td><span className="listing-kind">{formatVerificationStatus(org.verificationStatus)}</span></td>
                           <td>
                             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                               <button type="button" className="button button-bright button-small" onClick={() => setOrgVerification(org.id, 'verified')}>Verify</button>
@@ -182,7 +182,7 @@ export default function ControlRoomPage() {
             <div className="dashboard-columns">
               <section className="dashboard-panel">
                 <div className="panel-title"><h2>Explicit Ascendancy Appointment</h2></div>
-                <p style={{ fontSize: 12.5, color: 'var(--arena-ink-muted)', marginTop: 0 }}>
+                <p style={{ fontSize: 12.5, color: 'var(--arena-muted)', marginTop: 0 }}>
                   XP levels (1–30) never grant leadership ranks automatically. Appoint Vanguard, Gladiator, Strategos, Elder, or Champion explicitly here.
                 </p>
                 <div className="form-grid" style={{ marginBottom: 12 }}>
@@ -245,7 +245,7 @@ export default function ControlRoomPage() {
               </section>
 
               <section className="dashboard-panel">
-                <div className="panel-title"><h2>Scoped PermissionGrants (RBAC)</h2></div>
+                <div className="panel-title"><h2>Member Permissions</h2></div>
                 <div className="form-grid" style={{ marginBottom: 12 }}>
                   <label>
                     Select Member
@@ -273,10 +273,12 @@ export default function ControlRoomPage() {
                       (g) => g.memberId === permMemberId && g.scope === scope && g.houseId === targetHouse,
                     )
                     return (
-                      <div key={scope} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 10px', border: '1px solid var(--arena-border)', borderRadius: 7 }}>
+                      <div key={scope} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 10px', border: '1px solid var(--arena-line)', borderRadius: 7 }}>
                         <div>
                           <b style={{ fontSize: 13 }}>{PERMISSION_LABELS[scope]}</b>
-                          <div style={{ fontSize: 11, color: 'var(--arena-ink-muted)' }}><code>{scope}</code> {targetHouse ? `· House ${targetHouse}` : '· Global'}</div>
+                          <div style={{ fontSize: 11, color: 'var(--arena-muted)' }}>
+                            {targetHouse ? `House ${getHouseName(targetHouse, state.houses)}` : 'Global scope'}
+                          </div>
                         </div>
                         <button
                           type="button"
@@ -297,15 +299,15 @@ export default function ControlRoomPage() {
             <div className="dashboard-panel">
               <div className="panel-title"><h2>Missions Requiring Additional Approval (&gt;1,500 XP Band)</h2></div>
               {pendingHighValue.length === 0 ? (
-                <p style={{ color: 'var(--arena-ink-muted)', margin: 0 }}>No pending high-value missions right now.</p>
+                <p style={{ color: 'var(--arena-muted)', margin: 0 }}>No pending high-value missions right now.</p>
               ) : (
                 pendingHighValue.map((m) => {
                   const creator = state.members.find((x) => x.id === m.creatorMemberId)
                   return (
-                    <div key={m.id} style={{ padding: 13, border: '1px solid var(--arena-border)', borderRadius: 9, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                    <div key={m.id} style={{ padding: 13, border: '1px solid var(--arena-line)', borderRadius: 9, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                       <div>
                         <b>{m.title}</b>
-                        <div style={{ fontSize: 12.5, color: 'var(--arena-ink-muted)' }}>
+                        <div style={{ fontSize: 12.5, color: 'var(--arena-muted)' }}>
                           Creator: {creator?.displayName} · Reward: {m.budget.rewardPerContributorXp} XP/contributor · Reserved Escrow: {m.budget.totalReservedXp} XP
                         </div>
                       </div>
@@ -322,8 +324,8 @@ export default function ControlRoomPage() {
           {tab === 'ledger' && (
             <form className="form-panel" onSubmit={handleAdjustXp} style={{ maxWidth: 680 }}>
               <h2 style={{ marginTop: 0 }}>Audit-Logged XP Ledger Adjustment</h2>
-              <p style={{ fontSize: 13, color: 'var(--arena-ink-muted)', marginTop: 0 }}>
-                Adjustments append immutable ledger transactions and block negative Spendable XP balances.
+              <p style={{ fontSize: 13, color: 'var(--arena-muted)', marginTop: 0 }}>
+                Adjustments append ledger entries and prevent negative Spendable XP balances.
               </p>
               <div className="form-grid">
                 <label>
@@ -414,6 +416,6 @@ export default function ControlRoomPage() {
           )}
         </div>
       </PermissionGate>
-    </PageScaffold>
+    </div>
   )
 }

@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Calendar, CheckCircle2, Clock, Plus, Users, Video } from 'lucide-react'
 import { useArena } from '../app/arenaContext'
-import PageScaffold from '../components/PageScaffold'
 import DirectoryShowcase from '../components/public/DirectoryShowcase'
+import { getHouseName } from '../domain/constants'
 import type { EventAttendanceRole, EventKind } from '../domain/types'
 
 const EVENT_FILTERS: ('all' | EventKind | 'past')[] = [
@@ -18,10 +18,11 @@ const EVENT_FILTERS: ('all' | EventKind | 'past')[] = [
 ]
 
 export default function EventsPage() {
-  const { state, currentMember, rsvpEvent, recordEventAttendance, openQuickCreate } = useArena()
+  const { state, currentMember, can, rsvpEvent, recordEventAttendance, openQuickCreate } = useArena()
   const navigate = useNavigate()
   const [filter, setFilter] = useState<'all' | EventKind | 'past'>('all')
   const [roleChoice, setRoleChoice] = useState<Record<string, EventAttendanceRole>>({})
+  const [targetMemberChoice, setTargetMemberChoice] = useState<Record<string, string>>({})
 
   const filtered = state.events.filter((ev) => {
     if (filter === 'past') return ev.isPast
@@ -43,39 +44,38 @@ export default function EventsPage() {
     : 0
 
   return (
-    <PageScaffold
-      section="LIVE SESSIONS & GATHERINGS"
-      name="Arena Events"
-      description={`RSVP for AMAs, workshops, onboarding welcomes, and portfolio reviews. Attendance awards +${state.config.systemXpValues.eventAttendance} XP (+1 CP, capped at ${state.config.seasonalCpCaps.eventAttendancePerSeason} CP/season); Support (+35 XP/+5 CP) and Host (+75 XP/+10 CP) roles reward active facilitation.`}
-      actions={
-        currentMember ? (
-          <button type="button" className="button button-bright" onClick={() => openQuickCreate('event')}>
-            <Plus size={15} /> Propose Event
-          </button>
-        ) : undefined
-      }
-    >
+    <div className="inner-page">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <DirectoryShowcase
           variant="events"
-          kicker="SHOW UP. MEET YOUR PEOPLE."
-          headline="Good conversations change direction."
-          detail="Live workshops, House sessions, onboarding welcomes, AMAs, and portfolio review rooms."
+          kicker="LIVE SESSIONS & GATHERINGS"
+          headline="Arena Events"
+          detail="Join workshops, House sessions, onboarding welcomes, AMAs, and portfolio review rooms. Attendance earns +5 XP and +1 CP (up to 10 CP per season); Support and Host roles reward active facilitation."
           metric={String(upcomingCount)}
           metricLabel="UPCOMING EVENTS"
-          actionLabel={currentMember ? 'Propose an Event' : 'Explore Houses'}
+          actionLabel={currentMember ? 'Propose Event' : 'Explore Houses'}
           actionTo="/houses"
           onActionClick={() => (currentMember ? openQuickCreate('event') : navigate('/houses'))}
         />
 
-        {currentMember && (
-          <div className="arena-notice arena-notice-info">
-            <Calendar size={16} />
-            <span>
-              Your seasonal Event Attendance CP: <b>{seasonAttendanceCp} / {state.config.seasonalCpCaps.eventAttendancePerSeason} CP</b> cap used this season.
-            </span>
-          </div>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+          {currentMember ? (
+            <div className="arena-notice arena-notice-info" style={{ flex: '1 1 300px', margin: 0 }}>
+              <Calendar size={16} />
+              <span>
+                Seasonal Event Attendance CP used: <b>{seasonAttendanceCp} / {state.config.seasonalCpCaps.eventAttendancePerSeason} CP</b>
+              </span>
+            </div>
+          ) : (
+            <div />
+          )}
+
+          {currentMember && (
+            <button type="button" className="button button-bright" onClick={() => openQuickCreate('event')}>
+              <Plus size={15} /> Propose Event
+            </button>
+          )}
+        </div>
 
         <div className="arena-tabs">
           {EVENT_FILTERS.map((f) => (
@@ -97,12 +97,20 @@ export default function EventsPage() {
             const rsvps = state.eventParticipations.filter((ep) => ep.eventId === ev.id && ep.status !== 'cancelled')
             const myRsvp = currentMember ? rsvps.find((ep) => ep.memberId === currentMember.id) : undefined
             const selectedRole = roleChoice[ev.id] ?? 'attendee'
+            const selectedMemberId = targetMemberChoice[ev.id] ?? currentMember?.id ?? state.members[0]?.id ?? ''
+            const canVerifyEvent = Boolean(
+              currentMember &&
+                (can('event.manage', ev.houseId ?? undefined) ||
+                  (ev.houseId ? can('house.manage', ev.houseId) : false) ||
+                  can('moderator') ||
+                  can('platform.admin')),
+            )
 
             return (
               <article className="listing-card" key={ev.id}>
                 <div className="listing-top">
                   <span className="listing-kind kind-featured">{ev.kind}</span>
-                  {house && <span className="tag">{house.glyph} House {house.name}</span>}
+                  {house && <span className="tag">{house.glyph} House {getHouseName(house.id, state.houses)}</span>}
                   {ev.isPast && <span className="listing-kind"><Video size={12} /> Recording</span>}
                 </div>
 
@@ -120,36 +128,66 @@ export default function EventsPage() {
                   </div>
                 )}
 
-                <div className="listing-bottom" style={{ flexWrap: 'wrap', gap: 8 }}>
+                <div className="listing-bottom" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10 }}>
                   {!ev.isPast && currentMember ? (
                     <>
-                      <button
-                        type="button"
-                        className={`button button-small ${myRsvp ? 'button-quiet' : 'button-bright'}`}
-                        onClick={() => rsvpEvent(ev.id, 'attendee')}
-                      >
-                        {myRsvp ? <><CheckCircle2 size={13} /> Registered ({myRsvp.status}) — Cancel</> : 'RSVP Seat'}
-                      </button>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <select
-                          aria-label={`Select attendance role for ${ev.title}`}
-                          className="filter-select"
-                          style={{ height: 32 }}
-                          value={selectedRole}
-                          onChange={(e) => setRoleChoice((p) => ({ ...p, [ev.id]: e.target.value as EventAttendanceRole }))}
-                        >
-                          <option value="attendee">Attendee (+5 XP / +1 CP)</option>
-                          <option value="support">Support Role (+35 XP / +5 CP)</option>
-                          <option value="host">Host Role (+75 XP / +10 CP)</option>
-                        </select>
-                        <button
-                          type="button"
-                          className="button button-quiet button-small"
-                          onClick={() => recordEventAttendance(ev.id, currentMember.id, selectedRole)}
-                        >
-                          Verify Attendance
-                        </button>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+                        {myRsvp?.status === 'attended' ? (
+                          <span className="listing-kind kind-success">
+                            <CheckCircle2 size={13} /> Attendance verified
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            className={`button button-small ${myRsvp ? 'button-quiet' : 'button-bright'}`}
+                            onClick={() => rsvpEvent(ev.id, 'attendee')}
+                          >
+                            {myRsvp ? <><CheckCircle2 size={13} /> Registered · Cancel RSVP</> : 'RSVP Seat'}
+                          </button>
+                        )}
                       </div>
+
+                      {canVerifyEvent && (
+                        <div style={{ paddingTop: 10, borderTop: '1px solid #e6edf6', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          <div style={{ fontSize: 11.5, fontWeight: 700, color: '#52647d' }}>
+                            Steward Check-In (Simulated)
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                            <select
+                              aria-label={`Select member for ${ev.title}`}
+                              className="filter-select"
+                              style={{ height: 32 }}
+                              value={selectedMemberId}
+                              onChange={(e) => setTargetMemberChoice((p) => ({ ...p, [ev.id]: e.target.value }))}
+                            >
+                              {state.members.map((m) => (
+                                <option key={m.id} value={m.id}>{m.displayName}</option>
+                              ))}
+                            </select>
+                            <select
+                              aria-label={`Select attendance role for ${ev.title}`}
+                              className="filter-select"
+                              style={{ height: 32 }}
+                              value={selectedRole}
+                              onChange={(e) => setRoleChoice((p) => ({ ...p, [ev.id]: e.target.value as EventAttendanceRole }))}
+                            >
+                              <option value="attendee">Attendee (+5 XP / +1 CP)</option>
+                              <option value="support">Support Role (+35 XP / +5 CP)</option>
+                              <option value="host">Host Role (+75 XP / +10 CP)</option>
+                            </select>
+                            <button
+                              type="button"
+                              className="button button-quiet button-small"
+                              onClick={() => recordEventAttendance(ev.id, selectedMemberId, selectedRole)}
+                            >
+                              Mark Verified (Simulated)
+                            </button>
+                          </div>
+                          <small style={{ fontSize: 11, color: '#70829a' }}>
+                            Demo check-in — production attendance verification requires server-side authorisation.
+                          </small>
+                        </div>
+                      )}
                     </>
                   ) : (
                     <span className="listing-reward">{ev.isPast ? 'Archive Session' : 'Sign in to RSVP'}</span>
@@ -160,6 +198,6 @@ export default function EventsPage() {
           })}
         </div>
       </div>
-    </PageScaffold>
+    </div>
   )
 }

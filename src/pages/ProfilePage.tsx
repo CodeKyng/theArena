@@ -1,12 +1,13 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { Award, Building2, Flame, ShieldCheck, Sliders } from 'lucide-react'
+import { Award, Building2, Flame, Sliders, Sparkles } from 'lucide-react'
 import { useArena } from '../app/arenaContext'
 import PageScaffold from '../components/PageScaffold'
 import PermissionGate from '../components/PermissionGate'
+import { formatVerificationStatus, getHouseName } from '../domain/constants'
 import type { HouseId } from '../domain/types'
 
-type ProfileTab = 'identity' | 'membership' | 'portfolio' | 'recognition' | 'settings'
+type ProfileTab = 'identity' | 'membership' | 'portfolio' | 'recognition'
 
 export default function ProfilePage() {
   const {
@@ -17,7 +18,6 @@ export default function ProfilePage() {
     memberOrganisations,
     updateProfile,
     updateHouses,
-    updatePrivacy,
   } = useArena()
 
   const [tab, setTab] = useState<ProfileTab>('identity')
@@ -29,15 +29,11 @@ export default function ProfilePage() {
   const [primaryHouse, setPrimaryHouse] = useState<string>(currentMember?.primaryHouseId ?? '')
   const [secondaryHouse, setSecondaryHouse] = useState<string>(currentMember?.secondaryHouseId ?? '')
 
-  const [connectedX, setConnectedX] = useState(currentMember?.privacy.connectedX ?? '')
-  const [connectedGithub, setConnectedGithub] = useState(currentMember?.privacy.connectedGithub ?? '')
-  const [connectedWallet, setConnectedWallet] = useState(currentMember?.privacy.connectedWallet ?? '')
-
   return (
     <PageScaffold
-      section="Spartan Identity"
+      section="Profile"
       name="My Profile"
-      description="Public builder record, House affiliation, verified Proof-of-Work portfolio, and privacy settings."
+      description="Your public Spartan identity, House affiliation, verified Proof-of-Work portfolio, and unlocked badges."
     >
       <PermissionGate title="My Profile">
         {currentMember && (() => {
@@ -75,13 +71,14 @@ export default function ProfilePage() {
                     <h2>{currentMember.displayName}</h2>
                     <p>@{currentMember.username} · {currentMember.headline}</p>
                   </div>
-                  <button
-                    type="button"
-                    className="button button-quiet"
-                    onClick={() => setTab('settings')}
-                  >
-                    <Sliders size={14} /> Account Settings
-                  </button>
+                  <div className="profile-identity-actions">
+                    <Link className="button button-quiet" to="/personalization">
+                      <Sparkles size={14} /> Personalization
+                    </Link>
+                    <Link className="button button-quiet" to="/settings">
+                      <Sliders size={14} /> Settings
+                    </Link>
+                  </div>
                 </div>
                 <div className="profile-stats">
                   <div>
@@ -97,7 +94,7 @@ export default function ProfilePage() {
                     <small>Achievements</small>
                   </div>
                   <div>
-                    <b>{currentMember.primaryHouseId ? `House ${currentMember.primaryHouseId}` : 'Unassigned'}</b>
+                    <b>{currentMember.primaryHouseId ? `House ${getHouseName(currentMember.primaryHouseId, state.houses)}` : 'Unassigned'}</b>
                     <small>Primary House</small>
                   </div>
                 </div>
@@ -107,10 +104,9 @@ export default function ProfilePage() {
                 {(
                   [
                     ['identity', 'Public Identity'],
-                    ['membership', 'Arena Membership & Houses'],
+                    ['membership', 'Houses & Organisations'],
                     ['portfolio', `Proof-of-Work Portfolio (${myApprovedSubs.length + myProjects.length})`],
                     ['recognition', `Recognition (${myAchievements.length})`],
-                    ['settings', 'Private Settings & Privacy'],
                   ] as const
                 ).map(([id, label]) => (
                   <button
@@ -161,15 +157,23 @@ export default function ProfilePage() {
                 <div className="dashboard-columns">
                   <section className="dashboard-panel">
                     <div className="panel-title">
-                      <h2><Flame size={16} style={{ verticalAlign: 'middle' }} /> House Alignment (0 XP)</h2>
+                      <h2><Flame size={16} style={{ verticalAlign: 'middle' }} /> House Alignment</h2>
                     </div>
-                    <p style={{ fontSize: 13, color: 'var(--arena-ink-muted)', marginTop: 0 }}>
+                    <p style={{ fontSize: 13, color: 'var(--arena-muted)', marginTop: 0 }}>
                       Choose your Primary House and optional Secondary House. Changing Houses updates recommendations without awarding XP.
                     </p>
                     <div className="form-grid">
                       <label>
                         Primary House
-                        <select value={primaryHouse || currentMember.primaryHouseId || ''} onChange={(e) => setPrimaryHouse(e.target.value)}>
+                        <select
+                          aria-label="Primary House"
+                          value={primaryHouse}
+                          onChange={(e) => {
+                            const next = e.target.value
+                            setPrimaryHouse(next)
+                            if (!next || next === secondaryHouse) setSecondaryHouse('')
+                          }}
+                        >
                           <option value="">None</option>
                           {state.houses.map((h) => (
                             <option key={h.id} value={h.id}>{h.glyph} House {h.name}</option>
@@ -178,11 +182,17 @@ export default function ProfilePage() {
                       </label>
                       <label>
                         Secondary House
-                        <select value={secondaryHouse || currentMember.secondaryHouseId || ''} onChange={(e) => setSecondaryHouse(e.target.value)}>
+                        <select
+                          aria-label="Secondary House"
+                          value={secondaryHouse}
+                          onChange={(e) => setSecondaryHouse(e.target.value)}
+                        >
                           <option value="">None</option>
-                          {state.houses.map((h) => (
-                            <option key={h.id} value={h.id}>{h.glyph} House {h.name}</option>
-                          ))}
+                          {state.houses
+                            .filter((h) => h.id !== primaryHouse)
+                            .map((h) => (
+                              <option key={h.id} value={h.id}>{h.glyph} House {h.name}</option>
+                            ))}
                         </select>
                       </label>
                     </div>
@@ -191,9 +201,9 @@ export default function ProfilePage() {
                         type="button"
                         className="button button-bright"
                         onClick={() => {
-                          const p = (primaryHouse || currentMember.primaryHouseId || null) as HouseId | null
-                          const s = (secondaryHouse || currentMember.secondaryHouseId || null) as HouseId | null
-                          updateHouses(p, s === p ? null : s)
+                          const p = (primaryHouse || null) as HouseId | null
+                          const s = (!p || secondaryHouse === p ? null : (secondaryHouse || null)) as HouseId | null
+                          updateHouses(p, s)
                         }}
                       >
                         Save House Alignment
@@ -205,20 +215,20 @@ export default function ProfilePage() {
                     <div className="panel-title">
                       <h2><Building2 size={16} style={{ verticalAlign: 'middle' }} /> Linked Organisations</h2>
                     </div>
-                    <p style={{ fontSize: 13, color: 'var(--arena-ink-muted)', marginTop: 0 }}>
-                      Organisations are linked to your personal account and never inherit personal XP or Ascendancy ranks.
+                    <p style={{ fontSize: 13, color: 'var(--arena-muted)', marginTop: 0 }}>
+                      Organisations remain separate profiles from your personal XP, Level, and Ascendancy rank.
                     </p>
                     {memberOrganisations.length === 0 ? (
                       <Link className="button button-quiet button-small" to="/organisations">Create Organisation Profile</Link>
                     ) : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         {memberOrganisations.map((org) => (
-                          <div key={org.id} style={{ padding: 10, border: '1px solid var(--arena-border)', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div key={org.id} style={{ padding: 10, border: '1px solid var(--arena-line)', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <div>
                               <b>{org.name}</b>
-                              <div style={{ fontSize: 12, color: 'var(--arena-ink-muted)' }}>{org.kind} · {org.ecosystem}</div>
+                              <div style={{ fontSize: 12, color: 'var(--arena-muted)' }}>{org.kind} · {org.ecosystem}</div>
                             </div>
-                            <span className="listing-kind">{org.verificationStatus}</span>
+                            <span className="listing-kind">{formatVerificationStatus(org.verificationStatus)}</span>
                           </div>
                         ))}
                         <Link className="text-link" to="/organisations">Manage Organisations →</Link>
@@ -233,14 +243,14 @@ export default function ProfilePage() {
                   <section className="dashboard-panel">
                     <div className="panel-title"><h2>Approved Mission Proof of Work</h2></div>
                     {myApprovedSubs.length === 0 ? (
-                      <p style={{ color: 'var(--arena-ink-muted)', margin: 0 }}>No approved mission submissions yet.</p>
+                      <p style={{ color: 'var(--arena-muted)', margin: 0 }}>No approved mission submissions yet.</p>
                     ) : (
                       myApprovedSubs.map((s) => {
                         const m = state.missions.find((x) => x.id === s.missionId)
                         return (
-                          <div key={s.id} style={{ padding: 10, borderTop: '1px solid var(--arena-border)' }}>
+                          <div key={s.id} style={{ padding: 10, borderTop: '1px solid var(--arena-line)' }}>
                             <b>{m?.title}</b>
-                            <p style={{ margin: '4px 0', fontSize: 13, color: 'var(--arena-ink-muted)' }}>{s.summary}</p>
+                            <p style={{ margin: '4px 0', fontSize: 13, color: 'var(--arena-muted)' }}>{s.summary}</p>
                           </div>
                         )
                       })
@@ -249,12 +259,12 @@ export default function ProfilePage() {
                   <section className="dashboard-panel">
                     <div className="panel-title"><h2>Published Projects</h2></div>
                     {myProjects.length === 0 ? (
-                      <p style={{ color: 'var(--arena-ink-muted)', margin: 0 }}>No projects published yet. Add one via Explore → Projects.</p>
+                      <p style={{ color: 'var(--arena-muted)', margin: 0 }}>No projects published yet. Add one via Explore → Projects.</p>
                     ) : (
                       myProjects.map((p) => (
-                        <div key={p.id} style={{ padding: 10, borderTop: '1px solid var(--arena-border)' }}>
+                        <div key={p.id} style={{ padding: 10, borderTop: '1px solid var(--arena-line)' }}>
                           <b>{p.title}</b> <span className="tag">{p.status}</span>
-                          <p style={{ margin: '4px 0', fontSize: 13, color: 'var(--arena-ink-muted)' }}>{p.tagline}</p>
+                          <p style={{ margin: '4px 0', fontSize: 13, color: 'var(--arena-muted)' }}>{p.tagline}</p>
                         </div>
                       ))
                     )}
@@ -267,8 +277,8 @@ export default function ProfilePage() {
                   <div className="panel-title">
                     <h2><Award size={16} style={{ verticalAlign: 'middle' }} /> Ascendancy &amp; Unlocked Badges</h2>
                   </div>
-                  <p style={{ fontSize: 13, color: 'var(--arena-ink-muted)', marginTop: 0 }}>
-                    Current Ascendancy Rank: <b>{currentMember.ascendancyRank}</b> (Explicitly appointed—never unlocked automatically by XP).
+                  <p style={{ fontSize: 13, color: 'var(--arena-muted)', marginTop: 0 }}>
+                    Current Ascendancy Rank: <b>{currentMember.ascendancyRank}</b> (appointed separately from XP levels).
                   </p>
                   <div className="achievement-grid">
                     {myAchievements.map((ma, idx) => {
@@ -277,75 +287,13 @@ export default function ProfilePage() {
                       return (
                         <div className="achievement-card achievement-earned" key={ma.id}>
                           <span className="badge-number">{String(idx + 1).padStart(2, '0')}</span>
-                          <span className="badge-glyph">✳</span>
+                          <span className="badge-glyph" aria-hidden="true"><Award size={16} /></span>
                           <h3>{def.title}</h3>
                           <p>{def.description}</p>
-                          <small>EARNED · {def.code}</small>
+                          <small>Earned</small>
                         </div>
                       )
                     })}
-                  </div>
-                </div>
-              )}
-
-              {tab === 'settings' && (
-                <div className="form-panel" style={{ maxWidth: 740 }}>
-                  <div className="arena-notice arena-notice-info" style={{ marginBottom: 14 }}>
-                    <ShieldCheck size={16} />
-                    <span>
-                      <b>Private Settings:</b> Separated cleanly from your public profile. Controls visibility in Explore People and Leaderboards.
-                    </span>
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 18 }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 13.5 }}>
-                      <input
-                        type="checkbox"
-                        checked={currentMember.privacy.publicProfileVisible}
-                        onChange={(e) => updatePrivacy({ publicProfileVisible: e.target.checked })}
-                      />
-                      Show my public Spartan profile in Explore → People
-                    </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 13.5 }}>
-                      <input
-                        type="checkbox"
-                        checked={currentMember.privacy.showOnLeaderboard}
-                        onChange={(e) => updatePrivacy({ showOnLeaderboard: e.target.checked })}
-                      />
-                      Appear on public Seasonal &amp; All-Time CP Leaderboards
-                    </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 13.5 }}>
-                      <input
-                        type="checkbox"
-                        checked={currentMember.privacy.missionAlerts}
-                        onChange={(e) => updatePrivacy({ missionAlerts: e.target.checked })}
-                      />
-                      Receive in-app Mission &amp; Review alerts
-                    </label>
-                  </div>
-
-                  <div className="form-grid">
-                    <label>
-                      Connected GitHub Handle (Simulated)
-                      <input value={connectedGithub} onChange={(e) => setConnectedGithub(e.target.value)} placeholder="@handle" />
-                    </label>
-                    <label>
-                      Connected X Handle (Simulated)
-                      <input value={connectedX} onChange={(e) => setConnectedX(e.target.value)} placeholder="@handle" />
-                    </label>
-                    <label className="full-field">
-                      Read-only Wallet Address Reference (Simulated — no signing infra)
-                      <input value={connectedWallet} onChange={(e) => setConnectedWallet(e.target.value)} placeholder="0x..." />
-                    </label>
-                  </div>
-                  <div style={{ marginTop: 14 }}>
-                    <button
-                      type="button"
-                      className="button button-bright"
-                      onClick={() => updatePrivacy({ connectedGithub, connectedX, connectedWallet })}
-                    >
-                      Save Connected Handles
-                    </button>
                   </div>
                 </div>
               )}

@@ -14,7 +14,7 @@ export default function AuthBrandPanel() {
           <em>Every path.</em>
         </h1>
         <p>
-          Every member enters The Arena as a unified Spartan—free to learn, join missions, align with Houses, and optionally build an organisation later without splitting accounts.
+          Join The Arena with a single account—learn in the Academy, align with your Houses, complete real missions, and optionally represent an organisation later.
         </p>
         <div className="auth-art-orbit" aria-hidden="true">
           <span>◈</span>
@@ -22,7 +22,7 @@ export default function AuthBrandPanel() {
           <b>⌘</b>
         </div>
       </div>
-      <span className="auth-art-foot">THE ARENA · UNIFIED SPARTAN ACCOUNT · CLIENT SIMULATION</span>
+      <span className="auth-art-foot">THE ARENA · DEMO MODE</span>
     </aside>
   )
 }

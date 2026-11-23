@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react'
-import { Link } from 'react-router-dom'
-import { Lock, ShieldAlert } from 'lucide-react'
+import { Link, Navigate, useLocation } from 'react-router-dom'
+import { ShieldAlert } from 'lucide-react'
 import { useArena } from '../app/arenaContext'
+import { getHouseName, PERMISSION_LABELS } from '../domain/constants'
 import type { HouseId, PermissionScope } from '../domain/types'
 
 interface PermissionGateProps {
@@ -19,39 +20,29 @@ export default function PermissionGate({
   title = 'Restricted Workspace',
   children,
 }: PermissionGateProps) {
-  const { currentMember, can } = useArena()
+  const { state, currentMember, isAuthenticated, can } = useArena()
+  const location = useLocation()
 
-  if (requireSignedIn && !currentMember) {
-    return (
-      <div className="empty-state">
-        <span><Lock size={26} /></span>
-        <h3>Sign in required for {title}</h3>
-        <p>
-          You are browsing as a public Visitor. Sign in or switch to a Spartan demo persona in the simulation switcher to access this screen.
-        </p>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
-          <Link className="button button-bright" to="/login">Sign in to The Arena</Link>
-          <Link className="button button-quiet" to="/home">Return Home</Link>
-        </div>
-      </div>
-    )
+  if (requireSignedIn && (!isAuthenticated || !currentMember)) {
+    return <Navigate to="/login" replace state={{ from: location }} />
   }
 
   if (requiredAny && requiredAny.length > 0) {
     const allowed = requiredAny.some((scope) => can(scope, houseId))
     if (!allowed) {
+      const readablePermissions = requiredAny.map((scope) => PERMISSION_LABELS[scope] ?? scope).join(' or ')
+      const houseLabel = houseId ? ` for House ${getHouseName(houseId, state.houses)}` : ''
       return (
         <div className="empty-state">
           <span><ShieldAlert size={26} /></span>
           <h3>Permission required: {title}</h3>
           <p>
-            Signed in as <strong>{currentMember?.displayName}</strong> ({currentMember?.ascendancyRank}). This area enforces scoped RBAC permissions ({requiredAny.join(', ')}
-            {houseId ? ` for House ${houseId}` : ''}).
+            Signed in as <strong>{currentMember?.displayName}</strong> ({currentMember?.ascendancyRank}). Access requires {readablePermissions}{houseLabel}.
           </p>
           <p style={{ fontSize: 12 }}>
-            Frontend prototype note: you can switch to an authorised demo persona (e.g. Maya Kim for Forge Masters, Elena Rostova for Stewardship, or Marcus Vance for Control Room) in the simulation switcher.
+            In Demo Mode, switch to Maya Kim (Forge Masters), Elena Rostova (Stewardship), or Marcus Vance (Control Room).
           </p>
-          <Link className="button button-quiet" to="/home">Return to Home</Link>
+          <Link className="button button-quiet" to="/dashboard">Back to Dashboard</Link>
         </div>
       )
     }

@@ -1,13 +1,19 @@
 import { useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { ArrowRight, Info, ShieldCheck, UserPlus } from 'lucide-react'
 import { useArena } from '../../app/arenaContext'
+import { resolveSafeRedirect } from '../../app/authRedirect'
 import AuthBrandPanel from '../../components/auth/AuthBrandPanel'
 import { DEMO_PERSONAS } from '../../domain/constants'
 
 export default function AuthPage({ mode }: { mode: 'login' | 'register' }) {
-  const { signInByEmail, registerAccount, switchPersona } = useArena()
+  const { state, isAuthenticated, signInByEmail, registerAccount } = useArena()
   const navigate = useNavigate()
+  const location = useLocation()
+  const redirectTarget = resolveSafeRedirect(
+    (location.state as { from?: unknown } | null)?.from,
+    '/dashboard',
+  )
 
   const [displayName, setDisplayName] = useState('')
   const [username, setUsername] = useState('')
@@ -15,6 +21,10 @@ export default function AuthPage({ mode }: { mode: 'login' | 'register' }) {
   const [headline, setHeadline] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [recoverySent, setRecoverySent] = useState(false)
+
+  if (isAuthenticated) {
+    return <Navigate to={redirectTarget} replace />
+  }
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
@@ -25,14 +35,14 @@ export default function AuthPage({ mode }: { mode: 'login' | 'register' }) {
         setError(res.error)
         return
       }
-      navigate('/home')
+      navigate(redirectTarget, { replace: true })
     } else {
       const res = registerAccount({ displayName, username, email, headline })
       if (!res.ok) {
         setError(res.error)
         return
       }
-      navigate('/home')
+      navigate(redirectTarget, { replace: true })
     }
   }
 
@@ -45,13 +55,13 @@ export default function AuthPage({ mode }: { mode: 'login' | 'register' }) {
 
         <div className="auth-form-wrap">
           <div className="section-kicker">
-            {mode === 'login' ? 'SIMULATED SIGN IN' : 'UNIFIED REGISTRATION'}
+            {mode === 'login' ? 'SIGN IN' : 'JOIN THE ARENA'}
           </div>
           <h2>{mode === 'login' ? 'Welcome back.' : 'Join as a Spartan.'}</h2>
           <p>
             {mode === 'login'
-              ? 'Sign in with a seeded @arena.demo email or pick one of the demo personas below.'
-              : 'Create a unified Spartan account. You will start in the Newbie stage with guided orientation (+20 XP) and House selection.'}
+              ? 'Sign in with a demo email or choose one of the demo accounts below.'
+              : 'Create your account to join a House, explore the Academy, and take on missions.'}
           </p>
 
           {error && (
@@ -64,7 +74,7 @@ export default function AuthPage({ mode }: { mode: 'login' | 'register' }) {
             <div className="arena-notice arena-notice-info" style={{ marginBottom: 14 }}>
               <Info size={16} />
               <span>
-                Simulated recovery: in this frontend-only prototype no email server exists and no passwords are stored. Use any demo persona below or sign in with <code>jordan.davis@arena.demo</code>.
+                Demo mode: this preview stores data locally in your browser without passwords or email recovery. Choose any demo account below or sign in with <code>jordan.davis@arena.demo</code>.
               </span>
             </div>
           )}
@@ -119,7 +129,7 @@ export default function AuthPage({ mode }: { mode: 'login' | 'register' }) {
                 style={{ border: 0, background: 'none', cursor: 'pointer' }}
                 onClick={() => setRecoverySent(true)}
               >
-                Simulated password help?
+                Sign-in help?
               </button>
             )}
 
@@ -135,41 +145,50 @@ export default function AuthPage({ mode }: { mode: 'login' | 'register' }) {
           <div className="auth-switch">
             {mode === 'login' ? (
               <>
-                New around here? <Link to="/register">Create a unified account</Link>
+                New around here? <Link to="/register" state={location.state}>Create a unified account</Link>
               </>
             ) : (
               <>
-                Already have an account? <Link to="/login">Sign in</Link>
+                Already have an account? <Link to="/login" state={location.state}>Sign in</Link>
               </>
             )}
           </div>
 
           <div className="demo-login">
             <div className="demo-divider">
-              <span /> <small>OR TRY A DEMO PERSONA</small> <span />
+              <span /> <small>OR TRY A DEMO ACCOUNT</small> <span />
             </div>
             <div className="demo-role-grid">
-              {DEMO_PERSONAS.filter((p) => p.memberId !== null).map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => {
-                    switchPersona(p.memberId)
-                    navigate('/home')
-                  }}
-                >
-                  <ShieldCheck size={15} />
-                  <span>
-                    <b>{p.label.split(' (')[0]}</b>
-                    <small>{p.shortRole}</small>
-                  </span>
-                </button>
-              ))}
+              {DEMO_PERSONAS.filter((p) => p.memberId !== null).map((p) => {
+                const member = state.members.find((m) => m.id === p.memberId)
+                if (!member || member.membershipStatus !== 'spartan') return null
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => {
+                      setError(null)
+                      const res = signInByEmail(member.email)
+                      if (!res.ok) {
+                        setError(res.error)
+                        return
+                      }
+                      navigate(redirectTarget, { replace: true })
+                    }}
+                  >
+                    <ShieldCheck size={15} />
+                    <span>
+                      <b>{p.label.split(' (')[0]}</b>
+                      <small>{p.shortRole}</small>
+                    </span>
+                  </button>
+                )
+              })}
             </div>
           </div>
 
           <div className="auth-terms">
-            Unified Spartan identity · Zero role split on signup · Client simulation only
+            One account for learning, building, and organising · Demo Mode
           </div>
         </div>
       </section>

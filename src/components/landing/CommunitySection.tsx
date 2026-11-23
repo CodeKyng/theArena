@@ -8,10 +8,10 @@ export default function CommunitySection() {
   return (
     <section className="builder-section section-wrap" id="community">
       <div className="builder-intro">
-        <div className="section-kicker">SIX CANONICAL HOUSES</div>
+        <div className="section-kicker">THE SIX HOUSES</div>
         <h2>Find your craft.<br /><em>Grow with your House.</em></h2>
         <p>
-          Every Spartan aligns with a Primary and optional Secondary House—from technical engineering in Forge Masters to research in Seers and policy-compliant outreach in Echoes.
+          Choose a Primary House—and an optional Secondary House—to focus your work, from engineering in Forge Masters to research in Seers and outreach in Echoes.
         </p>
         <Link className="button button-bright" to="/houses">
           Explore all 6 Houses <ArrowRight size={16} />

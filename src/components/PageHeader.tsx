@@ -7,7 +7,7 @@ export default function PageHeader({
   actions,
 }: {
   name: string
-  description: string
+  description?: string
   section: string
   actions?: ReactNode
 }) {
@@ -19,7 +19,7 @@ export default function PageHeader({
           {name}
           <span className="intro-period">.</span>
         </h1>
-        <p>{description}</p>
+        {description && <p>{description}</p>}
       </div>
       {actions && <div className="intro-actions">{actions}</div>}
     </div>

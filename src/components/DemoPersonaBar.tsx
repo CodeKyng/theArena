@@ -3,8 +3,13 @@ import { useArena } from '../app/arenaContext'
 import { DEMO_PERSONAS } from '../domain/constants'
 
 export default function DemoPersonaBar({ variant = 'workspace' }: { variant?: 'workspace' | 'footer' }) {
-  const { currentMember, switchPersona, resetPrototype } = useArena()
-  const activeValue = currentMember ? currentMember.id : 'visitor'
+  const { currentMember, isAuthenticated, switchPersona, resetPrototype } = useArena()
+
+  if (!isAuthenticated || !currentMember) {
+    return null
+  }
+
+  const spartanPersonas = DEMO_PERSONAS.filter((p) => p.memberId !== null)
 
   return (
     <div
@@ -13,31 +18,29 @@ export default function DemoPersonaBar({ variant = 'workspace' }: { variant?: 'w
       aria-label="Frontend simulation controls"
     >
       <div className="demo-persona-bar-left">
-        <span className="demo-badge">Client Simulation</span>
+        <span className="demo-badge">Demo Mode</span>
         <span>
-          Local browser persistence only · Active view:{' '}
+          <span className="demo-persona-helper">Saved locally · </span>Viewing as{' '}
           <strong>
-            {currentMember
-              ? `${currentMember.displayName} (${currentMember.ascendancyRank})`
-              : 'Visitor (Public)'}
+            {currentMember.displayName} ({currentMember.ascendancyRank})
           </strong>
         </span>
       </div>
       <div className="demo-persona-bar-right">
         <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           <Users size={14} aria-hidden="true" />
-          <span style={{ fontWeight: 600 }}>Demo Persona:</span>
+          <span className="demo-persona-label" style={{ fontWeight: 600 }}>Demo Persona:</span>
           <select
             aria-label="Switch Demo Persona"
             className="demo-persona-select"
-            value={activeValue}
+            value={currentMember.id}
             onChange={(e) => {
               const val = e.target.value
-              switchPersona(val === 'visitor' ? null : val)
+              if (val) switchPersona(val)
             }}
           >
-            {DEMO_PERSONAS.map((p) => (
-              <option key={p.id} value={p.memberId ?? 'visitor'}>
+            {spartanPersonas.map((p) => (
+              <option key={p.id} value={p.memberId!}>
                 {p.label} — {p.shortRole}
               </option>
             ))}

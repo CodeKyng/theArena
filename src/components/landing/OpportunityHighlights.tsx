@@ -14,7 +14,7 @@ export default function OpportunityHighlights() {
         <div>
           <div className="section-kicker">ACTIVE MISSIONS</div>
           <h2>Proof of Work in <em>action.</em></h2>
-          <p>Funded missions reserve Spendable XP upfront and settle verified contributions to your Ledger and CP.</p>
+          <p>Take on community missions, submit your work for review, and earn XP and Contribution Points when approved.</p>
         </div>
         <Link className="text-link" to="/missions">Browse all missions <ArrowRight size={16} /></Link>
       </div>

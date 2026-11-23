@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useLocation } from 'react-router-dom'
 import { calculateLevelProgress, deriveXpBalance, memberHasPermission } from '../domain/progression'
 import type {
   ArenaPrototypeState,
@@ -22,7 +23,7 @@ import {
   createMission,
   createOrganisation,
   decideMissionApplication,
-  getMember,
+  getAuthenticatedMember,
   grantOrRevokePermission,
   joinOrApplyMission,
   logMentorshipSession,
@@ -58,11 +59,18 @@ import { loadArenaState, resetArenaStorage, saveArenaState } from '../services/a
 import { ArenaContext, type ArenaContextValue, type QuickCreateKind } from './arenaContext'
 
 export function ArenaProvider({ children }: { children: ReactNode }) {
+  const location = useLocation()
   const [state, setState] = useState<ArenaPrototypeState>(() => loadArenaState())
   const [toast, setToast] = useState<string | null>(null)
   const [searchModalOpen, setSearchModalOpen] = useState(false)
   const [quickCreateKind, setQuickCreateKind] = useState<QuickCreateKind | null>(null)
+  const [logoutIntent, setLogoutIntent] = useState<{ target: string; fromPathname: string } | null>(null)
   const timerRef = useRef<number | null>(null)
+
+  const logoutRedirectTo =
+    logoutIntent && location.pathname === logoutIntent.fromPathname
+      ? logoutIntent.target
+      : null
 
   const flash = useCallback((msg: string) => {
     setToast(msg)
@@ -74,9 +82,16 @@ export function ArenaProvider({ children }: { children: ReactNode }) {
     saveArenaState(state)
   }, [state])
 
+  const currentMember = useMemo(
+    () => getAuthenticatedMember(state, state.currentMemberId),
+    [state],
+  )
+  const isAuthenticated = Boolean(currentMember)
+
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        if (!isAuthenticated) return
         e.preventDefault()
         setSearchModalOpen((prev) => !prev)
       }
@@ -87,7 +102,7 @@ export function ArenaProvider({ children }: { children: ReactNode }) {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [])
+  }, [isAuthenticated])
 
   const applyResult = useCallback(
     <T,>(res: ServiceResult<T>, silent = false): ServiceResult<T> => {
@@ -102,16 +117,11 @@ export function ArenaProvider({ children }: { children: ReactNode }) {
     [flash],
   )
 
-  const currentMember = useMemo(
-    () => getMember(state, state.currentMemberId),
-    [state],
-  )
-
   const xpBalance = useMemo(
     () =>
       currentMember
         ? deriveXpBalance(currentMember.id, state.xpTransactions)
-        : { memberId: 'visitor', lifetimeXp: 0, spendableXp: 0, reservedXp: 0 },
+        : { memberId: 'guest', lifetimeXp: 0, spendableXp: 0, reservedXp: 0 },
     [currentMember, state.xpTransactions],
   )
 
@@ -140,10 +150,10 @@ export function ArenaProvider({ children }: { children: ReactNode }) {
 
   const activeOrganisation = useMemo(
     () =>
-      state.activeOrganisationId
-        ? state.organisations.find((o) => o.id === state.activeOrganisationId) ?? null
+      currentMember && state.activeOrganisationId
+        ? memberOrganisations.find((o) => o.id === state.activeOrganisationId) ?? null
         : null,
-    [state.activeOrganisationId, state.organisations],
+    [currentMember, memberOrganisations, state.activeOrganisationId],
   )
 
   const can = useCallback(
@@ -162,10 +172,34 @@ export function ArenaProvider({ children }: { children: ReactNode }) {
     [state.members],
   )
 
+  const safeSetSearchModalOpen = useCallback(
+    (open: boolean) => {
+      if (!isAuthenticated) {
+        setSearchModalOpen(false)
+        return
+      }
+      setSearchModalOpen(open)
+    },
+    [isAuthenticated],
+  )
+
+  const safeOpenQuickCreate = useCallback(
+    (kind: QuickCreateKind | null) => {
+      if (!isAuthenticated) {
+        setQuickCreateKind(null)
+        return
+      }
+      setQuickCreateKind(kind)
+    },
+    [isAuthenticated],
+  )
+
   const value = useMemo<ArenaContextValue>(
     () => ({
       state,
       currentMember,
+      isAuthenticated,
+      logoutRedirectTo,
       xpBalance,
       levelProgress,
       unreadNotificationsCount,
@@ -176,20 +210,35 @@ export function ArenaProvider({ children }: { children: ReactNode }) {
       can,
       getMemberBalance,
       getMemberById,
-      searchModalOpen,
-      setSearchModalOpen,
-      quickCreateKind,
-      openQuickCreate: setQuickCreateKind,
+      searchModalOpen: isAuthenticated ? searchModalOpen : false,
+      setSearchModalOpen: safeSetSearchModalOpen,
+      quickCreateKind: isAuthenticated ? quickCreateKind : null,
+      openQuickCreate: safeOpenQuickCreate,
 
       switchPersona: (memberId) => {
+        setLogoutIntent(null)
         applyResult(switchDemoPersona(state, memberId))
       },
-      signInByEmail: (email) => applyResult(signInDemoByEmail(state, email)),
-      registerAccount: (input) => applyResult(registerUnifiedAccount(state, input)),
-      signOut: () => {
+      signInByEmail: (email) => {
+        setLogoutIntent(null)
+        return applyResult(signInDemoByEmail(state, email))
+      },
+      registerAccount: (input) => {
+        setLogoutIntent(null)
+        return applyResult(registerUnifiedAccount(state, input))
+      },
+      signOut: (options) => {
+        setLogoutIntent(
+          options?.redirectTo ? { target: options.redirectTo, fromPathname: location.pathname } : null,
+        )
+        setSearchModalOpen(false)
+        setQuickCreateKind(null)
         applyResult(signOutAccount(state))
       },
       resetPrototype: () => {
+        setLogoutIntent(null)
+        setSearchModalOpen(false)
+        setQuickCreateKind(null)
         const fresh = resetArenaStorage()
         setState(fresh)
         flash('Prototype state reset to clean Season 2 baseline.')
@@ -219,7 +268,11 @@ export function ArenaProvider({ children }: { children: ReactNode }) {
         return applyResult(setOrganisationVerification(state, currentMember.id, orgId, status))
       },
       switchOrg: (orgId) => {
-        applyResult(switchActiveOrganisation(state, orgId))
+        if (!currentMember) {
+          flash('Sign in as a Spartan first.')
+          return
+        }
+        applyResult(switchActiveOrganisation(state, orgId, currentMember.id))
       },
       createMission: (input) => {
         if (!currentMember) return { ok: false, error: 'Sign in first.' }
@@ -351,11 +404,14 @@ export function ArenaProvider({ children }: { children: ReactNode }) {
       },
       markAllNotificationsRead: () => {
         if (!currentMember) return
-        setState((prev) => markAllNotificationsRead(prev, currentMember.id))
-        flash('All notifications marked as read.')
+        applyResult(markAllNotificationsRead(state, currentMember.id))
       },
       markNotificationRead: (id) => {
-        setState((prev) => markNotificationRead(prev, id))
+        if (!currentMember) return
+        setState((prev) => {
+          const res = markNotificationRead(prev, id, currentMember.id)
+          return res.ok ? res.state : prev
+        })
       },
     }),
     [
@@ -366,9 +422,14 @@ export function ArenaProvider({ children }: { children: ReactNode }) {
       flash,
       getMemberBalance,
       getMemberById,
+      isAuthenticated,
       levelProgress,
+      location.pathname,
+      logoutRedirectTo,
       memberOrganisations,
       quickCreateKind,
+      safeOpenQuickCreate,
+      safeSetSearchModalOpen,
       searchModalOpen,
       state,
       toast,

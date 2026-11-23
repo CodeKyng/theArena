@@ -13,7 +13,7 @@ export default function LandingFooter() {
         <Link to="/events">Events</Link>
         <Link to="/explore">Explore</Link>
       </div>
-      <small>Frontend Prototype · Local Simulation</small>
+      <small>Demo Mode</small>
     </footer>
   )
 }

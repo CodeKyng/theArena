@@ -21,7 +21,7 @@ export interface NavItem {
 }
 
 export const PRIMARY_NAV_ITEMS: NavItem[] = [
-  { id: 'home', path: '/home', label: 'Home', icon: 'home' },
+  { id: 'dashboard', path: '/dashboard', label: 'Dashboard', icon: 'home' },
   { id: 'missions', path: '/missions', label: 'Missions', icon: 'missions' },
   { id: 'houses', path: '/houses', label: 'Houses', icon: 'houses' },
   { id: 'explore', path: '/explore', label: 'Explore', icon: 'explore' },
@@ -61,27 +61,52 @@ export function getGovernanceNavItems(
   return items
 }
 
-export function resolveBreadcrumb(pathname: string, houseLookup?: (slug: string) => HouseId | undefined): { group: string; page: string } {
-  if (pathname.startsWith('/home')) return { group: 'Arena', page: 'Home' }
-  if (pathname.startsWith('/missions/new')) return { group: 'Missions', page: 'Create Mission' }
-  if (pathname.startsWith('/missions/')) return { group: 'Missions', page: 'Mission Detail' }
-  if (pathname.startsWith('/missions')) return { group: 'Arena', page: 'Missions' }
+export interface BreadcrumbTrail {
+  group: string
+  groupTo: string
+  page: string
+}
+
+export function resolveBreadcrumb(
+  pathname: string,
+  houseLookup?: (slug: string) => HouseId | undefined,
+): BreadcrumbTrail {
+  if (pathname.startsWith('/dashboard') || pathname.startsWith('/home')) {
+    return { group: 'Arena', groupTo: '/dashboard', page: 'Dashboard' }
+  }
+  if (pathname.startsWith('/missions/new')) {
+    return { group: 'Missions', groupTo: '/missions', page: 'Create Mission' }
+  }
+  if (pathname.startsWith('/missions/')) {
+    return { group: 'Missions', groupTo: '/missions', page: 'Mission Detail' }
+  }
+  if (pathname.startsWith('/missions')) {
+    return { group: 'Arena', groupTo: '/dashboard', page: 'Missions' }
+  }
   if (pathname.startsWith('/houses/')) {
     const slug = pathname.replace('/houses/', '').split('/')[0]
     const matched = houseLookup?.(slug)
-    return { group: 'Houses', page: matched ? slug.replace('-', ' ').replace(/\b\w/g, (c) => c.toUpperCase()) : 'House Workspace' }
+    return {
+      group: 'Houses',
+      groupTo: '/houses',
+      page: matched ? slug.replace('-', ' ').replace(/\b\w/g, (c) => c.toUpperCase()) : 'House Workspace',
+    }
   }
-  if (pathname.startsWith('/houses')) return { group: 'Arena', page: 'Houses' }
-  if (pathname.startsWith('/explore')) return { group: 'Arena', page: 'Explore' }
-  if (pathname.startsWith('/academy')) return { group: 'Arena', page: 'Academy' }
-  if (pathname.startsWith('/events')) return { group: 'Arena', page: 'Events' }
-  if (pathname.startsWith('/leaderboards')) return { group: 'Arena', page: 'Leaderboards' }
-  if (pathname.startsWith('/activity')) return { group: 'Personal', page: 'My Activity' }
-  if (pathname.startsWith('/profile')) return { group: 'Personal', page: 'My Profile' }
-  if (pathname.startsWith('/organisations')) return { group: 'Personal', page: 'Organisations' }
-  if (pathname.startsWith('/stewardship')) return { group: 'Governance', page: 'Stewardship' }
-  if (pathname.startsWith('/control-room')) return { group: 'Governance', page: 'Control Room' }
-  return { group: 'Arena', page: 'Workspace' }
+  if (pathname.startsWith('/houses')) return { group: 'Arena', groupTo: '/dashboard', page: 'Houses' }
+  if (pathname.startsWith('/explore')) return { group: 'Arena', groupTo: '/dashboard', page: 'Explore' }
+  if (pathname.startsWith('/academy')) return { group: 'Arena', groupTo: '/dashboard', page: 'Academy' }
+  if (pathname.startsWith('/events')) return { group: 'Arena', groupTo: '/dashboard', page: 'Events' }
+  if (pathname.startsWith('/leaderboards')) return { group: 'Arena', groupTo: '/dashboard', page: 'Leaderboards' }
+  if (pathname.startsWith('/notifications')) return { group: 'Personal', groupTo: '/activity', page: 'Notifications' }
+  if (pathname.startsWith('/activity')) return { group: 'Personal', groupTo: '/activity', page: 'My Activity' }
+  if (pathname.startsWith('/profile')) return { group: 'Personal', groupTo: '/profile', page: 'My Profile' }
+  if (pathname.startsWith('/personalization')) return { group: 'Account', groupTo: '/profile', page: 'Personalization' }
+  if (pathname.startsWith('/settings')) return { group: 'Account', groupTo: '/profile', page: 'Settings' }
+  if (pathname.startsWith('/help')) return { group: 'Arena', groupTo: '/dashboard', page: 'Help' }
+  if (pathname.startsWith('/organisations')) return { group: 'Arena', groupTo: '/dashboard', page: 'Organisations' }
+  if (pathname.startsWith('/stewardship')) return { group: 'Governance', groupTo: '/stewardship', page: 'Stewardship' }
+  if (pathname.startsWith('/control-room')) return { group: 'Governance', groupTo: '/control-room', page: 'Control Room' }
+  return { group: 'Arena', groupTo: '/dashboard', page: 'Workspace' }
 }
 
 export const LANDING_LINKS = [

@@ -4,6 +4,11 @@ import { useArena } from '../app/arenaContext'
 import PageScaffold from '../components/PageScaffold'
 import PermissionGate from '../components/PermissionGate'
 import StatCard from '../components/StatCard'
+import {
+  formatMissionStatus,
+  formatSubmissionStatus,
+  getHouseName,
+} from '../domain/constants'
 
 type ActivityTab =
   | 'contributions'
@@ -24,6 +29,10 @@ const VALID_ACTIVITY_TABS: ActivityTab[] = [
   'progress',
 ]
 
+function formatEnumLabel(value: string): string {
+  return value.charAt(0).toUpperCase() + value.slice(1).replace(/_/g, ' ')
+}
+
 export default function ActivityPage() {
   const { state, currentMember, xpBalance, levelProgress, toggleBookmark } = useArena()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -38,7 +47,7 @@ export default function ActivityPage() {
     <PageScaffold
       section="Personal Ledger"
       name="My Activity"
-      description="Approved deliverables, mission escrow, XP ledger mutations, seasonal CP, and achievements."
+      description="Approved deliverables, mission escrow, XP history, seasonal CP, and achievements."
       actions={
         <Link className="button button-quiet" to="/leaderboards">
           <Trophy size={15} /> View Leaderboards
@@ -76,7 +85,7 @@ export default function ActivityPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div className="stats-row">
                 <StatCard
-                  label="Lifetime XP (Monotonic)"
+                  label="Lifetime XP"
                   value={`${xpBalance.lifetimeXp.toLocaleString()} XP`}
                   change={`Level ${levelProgress.level} / 30`}
                   icon={<Award size={16} />}
@@ -90,13 +99,13 @@ export default function ActivityPage() {
                 <StatCard
                   label="Reserved Escrow XP"
                   value={`${xpBalance.reservedXp.toLocaleString()} XP`}
-                  change="Locked in active missions"
+                  change="Locked in open missions"
                   icon={<Lock size={16} />}
                 />
                 <StatCard
                   label="Season CP"
                   value={`${myTotalSeasonCp} CP`}
-                  change="Separate from XP ledger"
+                  change="Seasonal contribution standing"
                   icon={<Trophy size={16} />}
                 />
               </div>
@@ -132,18 +141,18 @@ export default function ActivityPage() {
                     <h2>Verified Contribution Records ({myContributions.length})</h2>
                   </div>
                   {myContributions.length === 0 ? (
-                    <p style={{ color: 'var(--arena-ink-muted)', margin: 0 }}>
+                    <p style={{ color: 'var(--arena-muted)', margin: 0 }}>
                       Complete a mission, Academy path, or verified event to build your contribution record.
                     </p>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                       {myContributions.map((cr) => (
-                        <div key={cr.id} style={{ padding: 12, border: '1px solid var(--arena-border)', borderRadius: 8 }}>
+                        <div key={cr.id} style={{ padding: 12, border: '1px solid var(--arena-line)', borderRadius: 8 }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
                             <b>{cr.title}</b>
-                            <span className="tag">House {cr.houseId} · {cr.sourceKind}</span>
+                            <span className="tag">House {getHouseName(cr.houseId, state.houses)} · {formatEnumLabel(cr.sourceKind)}</span>
                           </div>
-                          <div style={{ fontSize: 13, color: 'var(--arena-ink-muted)', marginTop: 4 }}>{cr.deliverableSummary}</div>
+                          <div style={{ fontSize: 13, color: 'var(--arena-muted)', marginTop: 4 }}>{cr.deliverableSummary}</div>
                         </div>
                       ))}
                     </div>
@@ -163,8 +172,8 @@ export default function ActivityPage() {
                     myCreatedMissions.map((m) => (
                       <div className="listing-card" key={m.id}>
                         <div className="listing-top">
-                          <span className="listing-kind">{m.status}</span>
-                          <span className="tag">House {m.houseId}</span>
+                          <span className="listing-kind">{formatMissionStatus(m.status)}</span>
+                          <span className="tag">House {getHouseName(m.houseId, state.houses)}</span>
                         </div>
                         <h3>{m.title}</h3>
                         <p>
@@ -199,7 +208,7 @@ export default function ActivityPage() {
                           <tr key={s.id}>
                             <td><b>{m?.title ?? s.missionId}</b></td>
                             <td>{s.summary}</td>
-                            <td><span className="listing-kind">{s.status.replace('_', ' ')}</span></td>
+                            <td><span className="listing-kind">{formatSubmissionStatus(s.status)}</span></td>
                             <td>v{s.version}</td>
                             <td><Link className="button button-quiet button-small" to={`/missions/${s.missionId}`}>Open</Link></td>
                           </tr>
@@ -216,17 +225,17 @@ export default function ActivityPage() {
                     <h2>Mission Applications ({myApplications.length})</h2>
                   </div>
                   {myApplications.length === 0 ? (
-                    <p style={{ color: 'var(--arena-ink-muted)', margin: 0 }}>You have not applied to any application-gated missions.</p>
+                    <p style={{ color: 'var(--arena-muted)', margin: 0 }}>You have not applied to any application-gated missions.</p>
                   ) : (
                     myApplications.map((app) => {
                       const m = state.missions.find((x) => x.id === app.missionId)
                       return (
-                        <div key={app.id} style={{ padding: 12, borderTop: '1px solid var(--arena-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div key={app.id} style={{ padding: 12, borderTop: '1px solid var(--arena-line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <div>
                             <b>{m?.title ?? app.missionId}</b>
-                            <div style={{ fontSize: 12.5, color: 'var(--arena-ink-muted)' }}>{app.applicationNote}</div>
+                            <div style={{ fontSize: 12.5, color: 'var(--arena-muted)' }}>{app.applicationNote}</div>
                           </div>
-                          <span className="listing-kind">{app.status}</span>
+                          <span className="listing-kind">{formatEnumLabel(app.status)}</span>
                         </div>
                       )
                     })
@@ -254,7 +263,7 @@ export default function ActivityPage() {
                               : state.resources.find((r) => r.id === b.targetId)?.title
                       return (
                         <div className="dashboard-panel" key={`${b.targetType}-${b.targetId}`}>
-                          <span className="tag">{b.targetType}</span>
+                          <span className="tag">{formatEnumLabel(b.targetType)}</span>
                           <h3 style={{ margin: '8px 0' }}>{label ?? b.targetId}</h3>
                           <div style={{ display: 'flex', gap: 8 }}>
                             {b.targetType === 'mission' && (
@@ -283,16 +292,16 @@ export default function ActivityPage() {
                         <th><History size={13} style={{ verticalAlign: 'middle' }} /> Type</th>
                         <th>Source</th>
                         <th>Reason</th>
-                        <th>Lifetime Δ</th>
-                        <th>Spendable Δ</th>
-                        <th>Reserved Δ</th>
+                        <th>Lifetime XP</th>
+                        <th>Spendable XP</th>
+                        <th>Reserved XP</th>
                       </tr>
                     </thead>
                     <tbody>
                       {myXpLedger.map((tx) => (
                         <tr key={tx.id}>
-                          <td><span className="listing-kind">{tx.transactionType}</span></td>
-                          <td>{tx.sourceType}</td>
+                          <td><span className="listing-kind">{formatEnumLabel(tx.transactionType)}</span></td>
+                          <td>{formatEnumLabel(tx.sourceType)}</td>
                           <td>{tx.reason}</td>
                           <td>{tx.deltaLifetime >= 0 ? `+${tx.deltaLifetime}` : tx.deltaLifetime}</td>
                           <td>{tx.deltaSpendable >= 0 ? `+${tx.deltaSpendable}` : tx.deltaSpendable}</td>
@@ -314,12 +323,12 @@ export default function ActivityPage() {
                         {levelProgress.isMaxLevel
                           ? 'Maximum Level 30 reached.'
                           : `${levelProgress.xpRemainingToNext} XP remaining to Level ${levelProgress.level + 1}.`}{' '}
-                        Zero silent XP bonuses—achievements celebrate verified work.
+                        Achievements celebrate verified contributions.
                       </p>
                       <div className="progress-track" style={{ marginTop: 12, maxWidth: 420 }}>
                         <i style={{ width: `${levelProgress.progressPercent}%` }} />
                       </div>
-                      <div style={{ fontSize: 12.5, color: 'var(--arena-ink-muted)', display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 10 }}>
+                      <div style={{ fontSize: 12.5, color: 'var(--arena-muted)', display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 10 }}>
                         <span>Event Attendance Cap: <b>{myAttendanceCp} / {state.config.seasonalCpCaps.eventAttendancePerSeason} CP</b></span>
                         <span>Community Support Cap: <b>{mySupportCp} / {state.config.seasonalCpCaps.communitySupportPerSeason} CP</b></span>
                         <span>Mentorship Pair Cap: <b>{state.config.seasonalCpCaps.mentorshipPairPerSeason} CP / pair</b></span>
@@ -337,10 +346,10 @@ export default function ActivityPage() {
                       return (
                         <article className={`achievement-card ${earned ? 'achievement-earned' : 'achievement-locked'}`} key={ach.id}>
                           <span className="badge-number">{String(idx + 1).padStart(2, '0')}</span>
-                          <span className="badge-glyph">{earned ? '✳' : '◌'}</span>
+                          <span className="badge-glyph" aria-hidden="true">{earned ? <Award size={16} /> : <Lock size={14} />}</span>
                           <h3>{ach.title}</h3>
                           <p>{ach.description}</p>
-                          <small>{earned ? `EARNED · ${ach.code}` : `LOCKED · ${ach.unlockConditionLabel}`}</small>
+                          <small>{earned ? 'Earned' : `Requirement: ${ach.unlockConditionLabel}`}</small>
                         </article>
                       )
                     })}

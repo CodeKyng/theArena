@@ -9,7 +9,7 @@ export default function PageScaffold({
   children,
 }: {
   name: string
-  description: string
+  description?: string
   section: string
   actions?: ReactNode
   children: ReactNode

@@ -14,8 +14,19 @@ import {
 } from 'lucide-react'
 import { useArena } from '../app/arenaContext'
 import PageScaffold from '../components/PageScaffold'
-import { EVIDENCE_TYPE_LABELS } from '../domain/constants'
+import {
+  EVIDENCE_TYPE_LABELS,
+  formatMissionStatus,
+  formatParticipationFormat,
+  formatSubmissionStatus,
+  formatVerificationStatus,
+  getHouseName,
+} from '../domain/constants'
 import type { EvidenceItem } from '../domain/types'
+
+function formatParticipationStatus(status: string): string {
+  return status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, ' ')
+}
 
 export default function MissionDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -66,6 +77,7 @@ export default function MissionDetailPage() {
   }
 
   const house = state.houses.find((h) => h.id === mission.houseId)
+  const houseName = getHouseName(mission.houseId, state.houses)
   const creator = state.members.find((m) => m.id === mission.creatorMemberId)
   const org = mission.sponsorOrganisationId
     ? state.organisations.find((o) => o.id === mission.sponsorOrganisationId)
@@ -111,7 +123,7 @@ export default function MissionDetailPage() {
       fileName: file.name,
       mimeType: file.type || 'application/octet-stream',
       sizeBytes: file.size,
-      simulatedNotice: 'Local file metadata only — binary files are not uploaded to cloud storage in this frontend prototype.',
+      simulatedNotice: 'Demo mode: saves filename and size only — files are not uploaded.',
     })
   }
 
@@ -127,7 +139,7 @@ export default function MissionDetailPage() {
       items.push({
         id: `ev-${Date.now()}-3`,
         type: 'files',
-        label: 'Local File Attachment (Simulated)',
+        label: 'File Attachment (Demo)',
         value: fileMeta.fileName,
         fileMeta,
       })
@@ -159,12 +171,9 @@ export default function MissionDetailPage() {
   }
 
   return (
-    <PageScaffold
-      section={`House ${house?.name ?? mission.houseId} · ${mission.category}`}
-      name={mission.title}
-      description={`Created by ${creator?.displayName ?? 'Arena Steward'}${org ? ` · Sponsored by ${org.name} (${org.verificationStatus})` : ''} · Deadline: ${mission.deadline}`}
-      actions={
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+    <div className="inner-page">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
           <Link className="button button-quiet button-small" to="/missions">
             <ArrowLeft size={14} /> Back to Missions
           </Link>
@@ -178,15 +187,13 @@ export default function MissionDetailPage() {
             </button>
           )}
         </div>
-      }
-    >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
         {showReport && (
           <div className="dashboard-panel" style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
             <input
               className="arena-input"
               style={{ flex: '1 1 240px' }}
-              placeholder="Reason for reporting this mission to Stewardship..."
+              placeholder="Reason for reporting this mission..."
               value={reportText}
               onChange={(e) => setReportText(e.target.value)}
             />
@@ -212,27 +219,32 @@ export default function MissionDetailPage() {
           </div>
           <div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
-              <span className="listing-kind">{house?.glyph} House {house?.name}</span>
+              <span className="listing-kind">{house?.glyph} House {houseName}</span>
               <span className="listing-kind">{mission.category}</span>
-              <span className="listing-kind">{mission.participationFormat}</span>
-              <span className="listing-kind kind-featured">{mission.status.replace('_', ' ')}</span>
+              <span className="listing-kind">{formatParticipationFormat(mission.participationFormat)}</span>
+              <span className="listing-kind kind-featured">{formatMissionStatus(mission.status)}</span>
               {mission.crossHouseEligible && <span className="listing-kind kind-success">Cross-House Eligible</span>}
             </div>
-            <h2>+{mission.budget.rewardPerContributorXp} XP · +{mission.budget.cpTierValue} CP</h2>
+            <h2>{mission.title}</h2>
             <p>{mission.description}</p>
+            <p style={{ marginTop: 6, fontSize: 12.5 }}>
+              Created by <b>{creator?.displayName ?? 'Arena Steward'}</b>
+              {org ? ` · Sponsored by ${org.name} (${formatVerificationStatus(org.verificationStatus)})` : ''}
+              {` · Deadline: ${mission.deadline}`}
+            </p>
           </div>
           <div className="community-total">
+            <b>+{mission.budget.rewardPerContributorXp} XP</b>
+            <small>REWARD (+{mission.budget.cpTierValue} CP)</small>
             <b>{mission.budget.remainingReservedXp} XP</b>
-            <small>ESCROW REMAINING</small>
-            <b>{mission.budget.settledXp} XP</b>
-            <small>SETTLED ({mission.budget.refundedXp} REFUNDED)</small>
+            <small>RESERVED · {mission.budget.settledXp} XP SETTLED</small>
           </div>
         </section>
 
         {canManage && (
           <div className="dashboard-panel" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
             <div style={{ fontSize: 13 }}>
-              <b>Mission Management:</b> Status is <code>{mission.status}</code> · {activeParticipantCount} / {mission.capacity} participant slots filled.
+              <b>Mission Controls:</b> {formatMissionStatus(mission.status)} · {activeParticipantCount} / {mission.capacity} participant slots filled.
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {mission.status === 'draft' && (
@@ -294,14 +306,14 @@ export default function MissionDetailPage() {
                 </div>
               </div>
 
-              <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--arena-border)' }}>
+              <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--arena-line)' }}>
                 <div className="section-kicker" style={{ marginBottom: 6 }}>REQUIRED EVIDENCE FORMATS</div>
                 <div className="tag-row">
                   {mission.requiredEvidenceTypes.map((ev) => (
                     <span className="tag" key={ev}>{EVIDENCE_TYPE_LABELS[ev]}</span>
                   ))}
                 </div>
-                <p style={{ fontSize: 12.5, color: 'var(--arena-ink-muted)', margin: '10px 0 0' }}>
+                <p style={{ fontSize: 12.5, color: 'var(--arena-muted)', margin: '10px 0 0' }}>
                   <b>Verification criteria:</b> {mission.verificationCriteria}
                 </p>
               </div>
@@ -315,7 +327,7 @@ export default function MissionDetailPage() {
                     <h2>Join &amp; Submit Proof of Work</h2>
                   </div>
                   {myParticipation && (
-                    <span className="listing-kind kind-success">Status: {myParticipation.status}</span>
+                    <span className="listing-kind kind-success">Status: {formatParticipationStatus(myParticipation.status)}</span>
                   )}
                 </div>
 
@@ -357,13 +369,13 @@ export default function MissionDetailPage() {
                 )}
 
                 {mySubmission && resubmitId !== mySubmission.id && (
-                  <div style={{ padding: 14, background: 'var(--arena-surface-soft)', border: '1px solid var(--arena-border)', borderRadius: 9, marginBottom: 14 }}>
+                  <div style={{ padding: 14, background: 'var(--arena-canvas)', border: '1px solid var(--arena-line)', borderRadius: 9, marginBottom: 14 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                       <b>Your Submission (v{mySubmission.version})</b>
-                      <span className="listing-kind kind-featured">{mySubmission.status.replace('_', ' ')}</span>
+                      <span className="listing-kind kind-featured">{formatSubmissionStatus(mySubmission.status)}</span>
                     </div>
                     <p style={{ margin: '8px 0', fontSize: 13.5 }}>{mySubmission.summary}</p>
-                    <ul style={{ margin: '0 0 8px', paddingLeft: 18, fontSize: 12.5, color: 'var(--arena-ink-muted)' }}>
+                    <ul style={{ margin: '0 0 8px', paddingLeft: 18, fontSize: 12.5, color: 'var(--arena-muted)' }}>
                       {mySubmission.evidenceItems.map((ev) => (
                         <li key={ev.id}>
                           <b>{ev.label}:</b> {ev.value}
@@ -372,11 +384,11 @@ export default function MissionDetailPage() {
                       ))}
                     </ul>
                     {mySubmission.reviews.length > 0 && (
-                      <div style={{ borderTop: '1px solid var(--arena-border)', paddingTop: 8, marginTop: 8, fontSize: 12.5 }}>
+                      <div style={{ borderTop: '1px solid var(--arena-line)', paddingTop: 8, marginTop: 8, fontSize: 12.5 }}>
                         <b>Review History:</b>
                         {mySubmission.reviews.map((r) => (
                           <div key={r.id} style={{ marginTop: 4 }}>
-                            <code>{r.decision}</code> — {r.comment}
+                            <b>{formatSubmissionStatus(r.decision)}:</b> {r.comment}
                           </div>
                         ))}
                       </div>
@@ -452,15 +464,18 @@ export default function MissionDetailPage() {
                         </label>
                       </div>
                       <label className="arena-field">
-                        Optional File Deliverable (Local Metadata Placeholder Only)
+                        Optional File Deliverable (Demo placeholder)
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                           <input type="file" onChange={handleFilePick} style={{ maxWidth: 280 }} />
                           {fileMeta && (
                             <span className="listing-kind kind-featured">
-                              <FileUp size={12} /> {fileMeta.fileName} ({fileMeta.sizeBytes} bytes · simulated only)
+                              <FileUp size={12} /> {fileMeta.fileName} ({fileMeta.sizeBytes} bytes · demo only)
                             </span>
                           )}
                         </div>
+                        <small style={{ color: 'var(--arena-muted)' }}>
+                          Demo mode: saves filename and size only — files are not uploaded.
+                        </small>
                       </label>
                       <div style={{ display: 'flex', gap: 8 }}>
                         <button type="submit" className="button button-bright">
@@ -489,18 +504,18 @@ export default function MissionDetailPage() {
                   <h2>Applications ({participations.length})</h2>
                 </div>
                 {participations.length === 0 ? (
-                  <p style={{ margin: 0, fontSize: 13, color: 'var(--arena-ink-muted)' }}>No applicants yet.</p>
+                  <p style={{ margin: 0, fontSize: 13, color: 'var(--arena-muted)' }}>No applicants yet.</p>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {participations.map((p) => {
                       const applicant = state.members.find((m) => m.id === p.memberId)
                       return (
-                        <div key={p.id} style={{ padding: 11, border: '1px solid var(--arena-border)', borderRadius: 8 }}>
+                        <div key={p.id} style={{ padding: 11, border: '1px solid var(--arena-line)', borderRadius: 8 }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                             <b>{applicant?.displayName ?? p.memberId}</b>
-                            <span className="listing-kind">{p.status}</span>
+                            <span className="listing-kind">{formatParticipationStatus(p.status)}</span>
                           </div>
-                          {p.applicationNote && <p style={{ margin: '0 0 8px', fontSize: 12.5, color: 'var(--arena-ink-muted)' }}>{p.applicationNote}</p>}
+                          {p.applicationNote && <p style={{ margin: '0 0 8px', fontSize: 12.5, color: 'var(--arena-muted)' }}>{p.applicationNote}</p>}
                           {p.status === 'applied' && (
                             <div style={{ display: 'flex', gap: 6 }}>
                               <button type="button" className="button button-bright button-small" onClick={() => decideApplication(p.id, 'accepted')}>Accept</button>
@@ -524,7 +539,7 @@ export default function MissionDetailPage() {
               </div>
 
               {missionSubmissions.length === 0 ? (
-                <p style={{ margin: 0, fontSize: 13, color: 'var(--arena-ink-muted)' }}>No Proof of Work submitted yet.</p>
+                <p style={{ margin: 0, fontSize: 13, color: 'var(--arena-muted)' }}>No Proof of Work submitted yet.</p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {missionSubmissions.map((sub) => {
@@ -532,22 +547,22 @@ export default function MissionDetailPage() {
                     const isOwnSubmission = currentMember?.id === sub.memberId
 
                     return (
-                      <div key={sub.id} style={{ padding: 12, border: '1px solid var(--arena-border)', borderRadius: 9 }}>
+                      <div key={sub.id} style={{ padding: 12, border: '1px solid var(--arena-line)', borderRadius: 9 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                           <b>{contributor?.displayName ?? sub.memberId} · v{sub.version}</b>
                           <span className={`listing-kind ${sub.status === 'approved' ? 'kind-success' : sub.status === 'disputed' ? 'kind-featured' : ''}`}>
-                            {sub.status.replace('_', ' ')}
+                            {formatSubmissionStatus(sub.status)}
                           </span>
                         </div>
                         <p style={{ margin: '6px 0', fontSize: 13 }}>{sub.summary}</p>
-                        <div style={{ fontSize: 12, color: 'var(--arena-ink-muted)' }}>
+                        <div style={{ fontSize: 12, color: 'var(--arena-muted)' }}>
                           {sub.evidenceItems.map((ev) => (
                             <div key={ev.id}>• <b>{ev.label}:</b> {ev.value}</div>
                           ))}
                         </div>
 
                         {canReviewAny && sub.status !== 'approved' && (
-                          <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--arena-border)' }}>
+                          <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--arena-line)' }}>
                             {isOwnSubmission ? (
                               <div className="arena-notice arena-notice-warn">
                                 <AlertTriangle size={15} />
@@ -615,6 +630,6 @@ export default function MissionDetailPage() {
           </div>
         </div>
       </div>
-    </PageScaffold>
+    </div>
   )
 }

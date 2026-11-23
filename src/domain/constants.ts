@@ -46,6 +46,8 @@ export const LEVEL_THRESHOLDS: number[] = [
   23200, // L30
 ]
 
+export const DISCUSSION_UNLOCK_LEVEL = 15
+
 export const ASCENDANCY_LADDER: { rank: AscendancyRank; summary: string }[] = [
   { rank: 'Spartan', summary: 'Default member identity and participation starting point.' },
   { rank: 'Vanguard', summary: 'First leadership step; initiative and part-time ambassador support.' },
@@ -187,13 +189,50 @@ export const SUBMISSION_STATUSES: { value: SubmissionStatus; label: string }[] =
 
 export const EVIDENCE_TYPE_LABELS: Record<EvidenceType, string> = {
   text: 'Written summary / text',
-  images: 'Image attachment (local metadata)',
-  files: 'File deliverable (local metadata)',
+  images: 'Image attachment',
+  files: 'File deliverable',
   links: 'Public URL / repository / thread link',
   video_audio: 'Video or audio reference',
   structured_response: 'Structured checklist response',
   attendance_verification: 'Event attendance verification',
   reviewer_confirmation: 'Reviewer / host confirmation',
+}
+
+export function getHouseName(houseId: string | null | undefined, houses: House[] = HOUSES): string {
+  if (!houseId) return 'Arena-wide'
+  return houses.find((h) => h.id === houseId)?.name ?? houseId
+}
+
+export function formatMissionStatus(status: MissionStatus): string {
+  return MISSION_STATUSES.find((s) => s.value === status)?.label ?? status.replace(/_/g, ' ')
+}
+
+export function formatSubmissionStatus(status: SubmissionStatus): string {
+  return SUBMISSION_STATUSES.find((s) => s.value === status)?.label ?? status.replace(/_/g, ' ')
+}
+
+export function formatParticipationFormat(format: ParticipationFormat): string {
+  switch (format) {
+    case 'open':
+      return 'Open'
+    case 'application':
+      return 'Application'
+    case 'team':
+      return 'Team'
+    case 'guided':
+      return 'Guided'
+  }
+}
+
+export function formatVerificationStatus(status: 'unverified' | 'pending_review' | 'verified'): string {
+  switch (status) {
+    case 'verified':
+      return 'Verified'
+    case 'pending_review':
+      return 'Pending review'
+    case 'unverified':
+      return 'Unverified'
+  }
 }
 
 export const DEFAULT_PLATFORM_CONFIG: PlatformConfig = {
@@ -279,8 +318,8 @@ export const DEMO_PERSONAS: DemoPersona[] = [
   {
     id: 'newbie',
     label: 'Alex Mercer (New Spartan)',
-    shortRole: 'Newbie Stage',
-    description: 'Newly joined Spartan in onboarding stage—test orientation, rules check, and House selection.',
+    shortRole: 'New Spartan',
+    description: 'Newly joined Spartan completing orientation, rules check, and House selection.',
     memberId: 'mem-newbie',
   },
   {

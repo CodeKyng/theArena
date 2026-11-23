@@ -11,9 +11,9 @@ import {
   Flame,
   Home,
   LogIn,
-  LogOut,
   PanelLeftClose,
   PanelLeftOpen,
+  Search,
   Shield,
   Sliders,
   Target,
@@ -28,7 +28,9 @@ import {
   PRIMARY_NAV_ITEMS,
   type NavItem,
 } from '../app/navigation'
+import AccountMenu from './AccountMenu'
 import Brand from './Brand'
+import { formatVerificationStatus } from '../domain/constants'
 
 function renderNavIcon(icon: NavItem['icon']) {
   switch (icon) {
@@ -75,8 +77,9 @@ export default function Sidebar({
     levelProgress,
     activeOrganisation,
     memberOrganisations,
+    can,
     switchOrg,
-    signOut,
+    setSearchModalOpen,
   } = useArena()
   const navigate = useNavigate()
   const [orgMenuOpen, setOrgMenuOpen] = useState(false)
@@ -86,13 +89,26 @@ export default function Sidebar({
     state.permissionGrants,
   )
 
-  const pendingReviewsCount = state.submissions.filter(
-    (s) => s.status === 'submitted' || s.status === 'under_review',
-  ).length
+  const pendingReviewsCount = currentMember
+    ? state.submissions.filter((sub) => {
+        if (sub.status !== 'submitted' && sub.status !== 'under_review') return false
+        if (sub.memberId === currentMember.id) return false
+        const mission = state.missions.find((m) => m.id === sub.missionId)
+        if (!mission) return false
+        return (
+          mission.creatorMemberId === currentMember.id ||
+          mission.assignedReviewerIds.includes(currentMember.id) ||
+          can('house.manage', mission.houseId) ||
+          can('mission.review', mission.houseId) ||
+          can('moderator') ||
+          can('platform.admin')
+        )
+      }).length
+    : 0
 
   const activeHouseName = currentMember?.primaryHouseId
     ? state.houses.find((h) => h.id === currentMember.primaryHouseId)?.name ?? 'House'
-    : 'No House Selected'
+    : 'No House selected'
 
   return (
     <>
@@ -106,24 +122,39 @@ export default function Sidebar({
       )}
       <aside className={`sidebar ${open ? 'sidebar-open' : ''}`} aria-label="Primary Arena navigation">
         <div className="sidebar-top">
-          <Brand to="/home" />
-          <button
-            type="button"
-            className="sidebar-collapse-btn"
-            onClick={onToggleCollapse}
-            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          >
-            {collapsed ? <PanelLeftOpen size={15} /> : <PanelLeftClose size={15} />}
-          </button>
-          <button
-            type="button"
-            className="icon-button mobile-close"
-            onClick={onClose}
-            aria-label="Close menu"
-          >
-            <X size={18} />
-          </button>
+          <Brand to="/dashboard" />
+          <div className="sidebar-top-actions">
+            <button
+              type="button"
+              className="sidebar-collapse-btn sidebar-search-btn"
+              onClick={() => {
+                setSearchModalOpen(true)
+                onClose()
+              }}
+              aria-label="Search"
+              title="Search"
+            >
+              <Search size={15} />
+            </button>
+            <button
+              type="button"
+              className="sidebar-collapse-btn sidebar-desktop-collapse"
+              onClick={onToggleCollapse}
+              aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            >
+              {collapsed ? <PanelLeftOpen size={15} /> : <PanelLeftClose size={15} />}
+            </button>
+            <button
+              type="button"
+              className="icon-button mobile-close"
+              onClick={onClose}
+              aria-label="Close menu"
+              title="Close menu"
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         <button
@@ -156,10 +187,10 @@ export default function Sidebar({
             </b>
             <small>
               {activeOrganisation
-                ? `Org (${activeOrganisation.verificationStatus.replace('_', ' ')})`
+                ? `${formatVerificationStatus(activeOrganisation.verificationStatus)} organisation`
                 : currentMember
                   ? `${currentMember.ascendancyRank} · ${activeHouseName}`
-                  : 'Public account'}
+                  : 'Visitor view'}
             </small>
           </span>
           <ChevronDown size={14} className="workspace-switch-chevron" />
@@ -176,7 +207,7 @@ export default function Sidebar({
               }}
             >
               <UserCheck size={14} />
-              <span className="sidebar-link-label">Personal Spartan Context</span>
+              <span className="sidebar-link-label">Personal account</span>
             </button>
             {memberOrganisations.map((org) => (
               <button
@@ -207,7 +238,7 @@ export default function Sidebar({
         )}
 
         <label className="side-label">WORKSPACE</label>
-        <nav className="side-nav">
+        <nav className="side-nav" aria-label="Workspace navigation">
           {PRIMARY_NAV_ITEMS.map((item) => (
             <NavLink
               key={item.id}
@@ -218,7 +249,7 @@ export default function Sidebar({
               {renderNavIcon(item.icon)}
               <span className="sidebar-link-label">{item.label}</span>
               {item.id === 'missions' && pendingReviewsCount > 0 && currentMember && (
-                <i className="nav-count" title="Submissions awaiting review">
+                <i className="nav-count" title="Submissions awaiting your review">
                   {pendingReviewsCount}
                 </i>
               )}
@@ -228,8 +259,8 @@ export default function Sidebar({
 
         {currentMember && (
           <>
-            <label className="side-label side-label-spaced">MY ARENA</label>
-            <nav className="side-nav">
+            <label className="side-label side-label-spaced">PERSONAL</label>
+            <nav className="side-nav" aria-label="Personal navigation">
               {PERSONAL_NAV_ITEMS.map((item) => (
                 <NavLink
                   key={item.id}
@@ -241,6 +272,10 @@ export default function Sidebar({
                   <span className="sidebar-link-label">{item.label}</span>
                 </NavLink>
               ))}
+            </nav>
+
+            <label className="side-label side-label-spaced">ORGANISATIONS</label>
+            <nav className="side-nav" aria-label="Organisations navigation">
               <NavLink
                 to="/organisations"
                 onClick={onClose}
@@ -256,7 +291,7 @@ export default function Sidebar({
         {governanceItems.length > 0 && (
           <>
             <label className="side-label side-label-spaced">GOVERNANCE</label>
-            <nav className="side-nav">
+            <nav className="side-nav" aria-label="Governance navigation">
               {governanceItems.map((item) => (
                 <NavLink
                   key={item.id}
@@ -275,46 +310,35 @@ export default function Sidebar({
         <div className="sidebar-bottom">
           {currentMember ? (
             <>
-              <div className="xp-card">
+              <div className="xp-card" aria-label="XP Progression">
                 <div className="xp-heading">
                   <span>
                     <Award size={12} /> LEVEL {levelProgress.level}
                   </span>
-                  <b>{xpBalance.spendableXp} SPEND</b>
+                  <b>{xpBalance.spendableXp.toLocaleString()} SPENDABLE</b>
                 </div>
                 <strong>{currentMember.ascendancyRank}</strong>
-                <div className="xp-bar">
+                <div
+                  className="xp-bar"
+                  role="progressbar"
+                  aria-label="Progress to next level"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={levelProgress.progressPercent}
+                >
                   <i style={{ width: `${levelProgress.progressPercent}%` }} />
                 </div>
-                <small>
-                  {xpBalance.lifetimeXp.toLocaleString()} XP{' '}
-                  <span>
+                <div className="xp-card-meta">
+                  <span>{xpBalance.lifetimeXp.toLocaleString()} Lifetime XP</span>
+                  <span className="xp-card-next">
                     {levelProgress.isMaxLevel
-                      ? 'Max L30'
-                      : `${levelProgress.xpRemainingToNext} to L${levelProgress.level + 1}`}
+                      ? 'Max Level 30 reached'
+                      : `${levelProgress.xpRemainingToNext.toLocaleString()} XP left to Level ${levelProgress.level + 1}`}
                   </span>
-                </small>
+                </div>
               </div>
 
-              <div className="profile-mini">
-                <span className="avatar avatar-small">{currentMember.avatarInitials}</span>
-                <span className="profile-mini-meta">
-                  <b>{currentMember.displayName}</b>
-                  <small>{currentMember.ascendancyRank}</small>
-                </span>
-                <button
-                  type="button"
-                  className="sidebar-signout"
-                  onClick={() => {
-                    signOut()
-                    onClose()
-                  }}
-                  aria-label="Sign out to Visitor view"
-                  title="Sign out"
-                >
-                  <LogOut size={15} />
-                </button>
-              </div>
+              <AccountMenu variant="sidebar" onNavigate={onClose} />
             </>
           ) : (
             <div className="guest-join">

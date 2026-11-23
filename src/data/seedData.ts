@@ -1448,7 +1448,7 @@ export const INITIAL_ARENA_STATE: ArenaPrototypeState = {
   academyPaths: [
     {
       id: 'path-web3-foundations',
-      title: 'Web3 & Arena Foundations (Demo Catalogue)',
+      title: 'Web3 & Arena Foundations',
       subtitle: 'Essential mental models: public keys, verifiable contributions, Houses, and XP vs CP governance.',
       track: 'Web3 Foundations',
       houseId: null,
@@ -1525,7 +1525,7 @@ export const INITIAL_ARENA_STATE: ArenaPrototypeState = {
     },
     {
       id: 'path-wallet-safety',
-      title: 'Wallet & Digital Safety Essentials (Demo Catalogue)',
+      title: 'Wallet & Digital Safety Essentials',
       subtitle: 'Practical operational security for builders: seed hygiene, approval scoping, and phishing defence.',
       track: 'Wallet & Digital Safety',
       houseId: 'seers',
@@ -1579,7 +1579,7 @@ export const INITIAL_ARENA_STATE: ArenaPrototypeState = {
     },
     {
       id: 'path-forge-systems',
-      title: 'Forge Masters: Deterministic System Craft (Demo Catalogue)',
+      title: 'Forge Masters: Deterministic System Craft',
       subtitle: 'Engineering ledger invariants, idempotency keys, and reproducible builds for technical contributors.',
       track: 'House Mastery',
       houseId: 'forge-masters',
@@ -1621,11 +1621,16 @@ export const INITIAL_ARENA_STATE: ArenaPrototypeState = {
   glossary: [
     { term: 'Spartan', definition: 'Default member identity in The Arena upon accepting community rules and entering onboarding.', category: 'Identity' },
     { term: 'Ascendancy Ladder', definition: 'Appointed leadership progression: Spartan → Vanguard → Gladiator → Strategos → Elder → Champion. Never unlocked automatically by XP alone.', category: 'Governance' },
-    { term: 'Lifetime XP', definition: 'Monotonic, permanent total reflecting your all-time progress across Levels 1–30. Spending or funding missions never lowers Lifetime XP.', category: 'Progression' },
-    { term: 'Spendable XP', definition: 'Active XP balance available to reserve and fund missions or commissions without spending real money.', category: 'Progression' },
+    { term: 'Lifetime XP', definition: 'Cumulative total reflecting your all-time progress across Levels 1–30. Spending or funding missions never lowers Lifetime XP.', category: 'Progression' },
+    { term: 'Spendable XP', definition: 'XP currently available to reserve and fund missions or commissions.', category: 'Progression' },
+    { term: 'Reserved XP', definition: 'XP temporarily held in active mission escrow until contributor work is settled or unspent slots are refunded.', category: 'Progression' },
+    { term: 'Mission Escrow', definition: 'Reservation holding funded Spendable XP on a mission so approved contributors are paid reliably and unspent funds return on cancellation or expiry.', category: 'Missions' },
     { term: 'Contribution Points (CP)', definition: 'Activity-weighted contribution score used for seasonal (90-day) and all-time leaderboards—kept strictly separate from XP.', category: 'Recognition' },
-    { term: 'House Echoes', definition: 'Canonical House for distribution & outreach that also exposes cross-House opt-in missions under strict anti-engagement-farming policy.', category: 'Houses' },
-    { term: 'Proof of Work (PoW)', definition: 'Verifiable deliverable evidence (links, summaries, structured responses, or local artefact metadata) attached to a mission submission.', category: 'Missions' },
+    { term: 'House Echoes', definition: 'House focused on distribution and outreach that also offers cross-House missions under anti-engagement-farming rules.', category: 'Houses' },
+    { term: 'Proof of Work (PoW)', definition: 'Verifiable deliverable evidence (links, written summaries, structured responses, or files) attached to a mission submission.', category: 'Missions' },
+    { term: 'Stewardship', definition: 'Elder and Strategos workspace for dispute arbitration, submission review, and mentorship verification.', category: 'Governance' },
+    { term: 'Control Room', definition: 'Administrative workspace for Ascendancy appointments, permissions, high-value (>1,500 XP) mission approvals, and baseline rules.', category: 'Governance' },
+    { term: 'Permission Grants', definition: 'Scoped administrative or steward capabilities granted to members on top of their Spartan identity.', category: 'Governance' },
   ],
   learningCompletions: [
     { id: 'lc-1', memberId: 'mem-jordan', itemType: 'lesson', itemId: 'les-f1-1', completedAt: '2026-10-16T10:00:00.000Z' },
@@ -1922,7 +1927,7 @@ export const INITIAL_ARENA_STATE: ArenaPrototypeState = {
       category: 'announcement',
       title: 'Welcome to The Arena, New Spartan',
       body: 'Complete your Orientation & Rules Check (+20 XP) and select your Primary & Secondary Houses to unlock full participation.',
-      linkPath: '/home',
+      linkPath: '/dashboard',
       read: false,
       createdAt: '2026-11-18T09:05:00.000Z',
     },

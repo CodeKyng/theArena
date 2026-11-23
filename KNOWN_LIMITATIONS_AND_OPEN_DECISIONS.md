@@ -2,9 +2,9 @@
 
 ## Intentional Frontend-Only Prototype Boundaries
 1. **Simulated Persistence (`localStorage`):** All edits, missions, XP/CP balances, and notifications persist locally under `arena.prototype.v1` and reset on "Reset Data" or clearing browser storage. No multi-user real-time sync exists yet.
-2. **Simulated Identity Switcher (No Real Auth/Passwords):** The 6-persona switcher and email-only demo login (`@arena.demo`) omit passwords, sessions, OAuth, and backend JWT verification. Backend engineers must never trust client-provided actor IDs in production.
-3. **Simulated File Uploads:** `EvidenceItem.fileMeta` captures local browser `File` metadata (`fileName`, `mimeType`, `sizeBytes`) and renders an explicit simulation notice rather than uploading binaries to cloud storage.
-4. **Demo Academy Catalogue:** The 3 Academy learning paths (`Web3 Foundations`, `Wallet & Digital Safety`, `Forge Masters`) and glossary are demonstration curriculum fixtures clearly labelled `Demo Catalogue`, ready for editorial replacement by Arena Stewards.
+2. **Simulated Identity Switcher & Client-Side Authorisation Boundary (No Real Auth/Passwords):** The 6-persona switcher and email-only demo login (`@arena.demo`) omit passwords, sessions, OAuth, and backend JWT verification. Likewise, RBAC checks—including event attendance and Host/Support check-in verification (`recordEventAttendanceOrRole` and the Events `Steward Check-In (Simulated)` controls)—are client-side prototype simulations only and do not provide security in a production environment. Backend engineers must enforce server-side authentication and RBAC authorisation on all mutations.
+3. **Simulated File Uploads:** `EvidenceItem.fileMeta` captures local browser `File` metadata (`fileName`, `mimeType`, `sizeBytes`) rather than uploading binaries to cloud storage.
+4. **Sample Academy Curriculum:** The 3 Academy learning paths (`Web3 Foundations`, `Wallet & Digital Safety`, `Forge Masters`) and glossary are sample curriculum fixtures (labelled with a single sample-curriculum notice at the top of Academy), ready for editorial replacement by Arena Stewards.
 5. **Simulated Notifications & Newsletter:** In-app notification popovers mutate local state only; email alerts and landing newsletter submissions display local confirmation without SMTP delivery.
 6. **Responsive Browser Engine Note:** Automated Vitest (`jsdom`) + CSS inspection verified component behaviour and breakpoint rules; a Chromium/Playwright binary was unavailable in this environment for pixel-screenshot rendering.
 

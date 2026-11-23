@@ -1,5 +1,4 @@
 import { useArena } from '../../app/arenaContext'
-import DemoPersonaBar from '../../components/DemoPersonaBar'
 import CommunitySection from '../../components/landing/CommunitySection'
 import HeroSection from '../../components/landing/HeroSection'
 import LandingFooter from '../../components/landing/LandingFooter'
@@ -16,7 +15,6 @@ export default function LandingPage() {
       <CommunitySection />
       <Newsletter flash={flash} />
       <LandingFooter />
-      <DemoPersonaBar variant="footer" />
     </>
   )
 }

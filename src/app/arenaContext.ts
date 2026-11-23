@@ -32,6 +32,8 @@ export type QuickCreateKind =
 export interface ArenaContextValue {
   state: ArenaPrototypeState
   currentMember: MemberProfile | null
+  isAuthenticated: boolean
+  logoutRedirectTo: string | null
   xpBalance: XPBalance
   levelProgress: LevelProgressInfo
   unreadNotificationsCount: number
@@ -50,7 +52,7 @@ export interface ArenaContextValue {
   switchPersona: (memberId: string | null) => void
   signInByEmail: (email: string) => ServiceResult<MemberProfile>
   registerAccount: (input: { displayName: string; username: string; email: string; headline?: string }) => ServiceResult<MemberProfile>
-  signOut: () => void
+  signOut: (options?: { redirectTo?: string }) => void
   resetPrototype: () => void
   completeOrientation: () => void
   updateHouses: (primary: HouseId | null, secondary: HouseId | null) => ServiceResult<MemberProfile>

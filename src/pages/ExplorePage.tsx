@@ -9,23 +9,37 @@ import {
   Plus,
   Search,
   Send,
+  UserPen,
   Users,
   Wrench,
 } from 'lucide-react'
 import { useArena } from '../app/arenaContext'
 import ListingCard from '../components/ListingCard'
-import PageScaffold from '../components/PageScaffold'
 import DirectoryShowcase from '../components/public/DirectoryShowcase'
+import { DISCUSSION_UNLOCK_LEVEL, getHouseName } from '../domain/constants'
 
 type ExploreTab = 'opportunities' | 'people' | 'projects' | 'services' | 'resources' | 'discussions'
 
 const VALID_EXPLORE_TABS: ExploreTab[] = ['opportunities', 'people', 'projects', 'services', 'resources', 'discussions']
+
+const TAB_PRIMARY_ACTION: Record<
+  ExploreTab,
+  { label: string; kind: 'create'; target: 'opportunity' | 'project' | 'service' | 'resource' | 'discussion' } | { label: string; kind: 'profile' }
+> = {
+  opportunities: { label: 'Post Opportunity', kind: 'create', target: 'opportunity' },
+  people: { label: 'Edit Profile', kind: 'profile' },
+  projects: { label: 'Add Project', kind: 'create', target: 'project' },
+  services: { label: 'Offer Service', kind: 'create', target: 'service' },
+  resources: { label: 'Share Resource', kind: 'create', target: 'resource' },
+  discussions: { label: 'Start Discussion', kind: 'create', target: 'discussion' },
+}
 
 export default function ExplorePage() {
   const {
     state,
     currentMember,
     xpBalance,
+    levelProgress,
     toggleBookmark,
     commissionService,
     addDiscussionReply,
@@ -52,35 +66,31 @@ export default function ExplorePage() {
   const matchesHouse = (hId: string | null) => houseFilter === 'all' || hId === houseFilter
   const matchesQuery = (text: string) => !q || text.toLowerCase().includes(q)
 
+  const primaryAction = TAB_PRIMARY_ACTION[tab]
+  const isSpartan = currentMember?.membershipStatus === 'spartan'
+  const canReplyDiscussion = Boolean(isSpartan)
+  const canCreateDiscussion = Boolean(isSpartan && levelProgress.level >= DISCUSSION_UNLOCK_LEVEL)
+  const isDiscussionActionBlocked =
+    primaryAction.kind === 'create' && primaryAction.target === 'discussion' && !canCreateDiscussion
+
+  const handlePrimaryAction = () => {
+    if (primaryAction.kind === 'profile') {
+      navigate('/profile')
+    } else if (primaryAction.target === 'discussion' && !canCreateDiscussion) {
+      return
+    } else {
+      openQuickCreate(primaryAction.target)
+    }
+  }
+
   return (
-    <PageScaffold
-      section="ARENA DISCOVERY & ECOSYSTEM"
-      name="Explore The Arena"
-      description="Discover ecosystem Opportunities, connect with Spartan People, inspect Projects, commission Services via XP-funded missions, read Resources, and join Discussions."
-      actions={
-        currentMember ? (
-          <button
-            type="button"
-            className="button button-bright"
-            onClick={() => {
-              if (tab === 'projects') openQuickCreate('project')
-              else if (tab === 'services') openQuickCreate('service')
-              else if (tab === 'resources') openQuickCreate('resource')
-              else if (tab === 'discussions') openQuickCreate('discussion')
-              else openQuickCreate('opportunity')
-            }}
-          >
-            <Plus size={15} /> Add to {tab}
-          </button>
-        ) : undefined
-      }
-    >
+    <div className="inner-page">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <DirectoryShowcase
           variant="explore"
-          kicker="YOUR NEXT MOVE STARTS HERE"
-          headline="The right door is closer than you think."
-          detail="A living ecosystem map of Spartan people, projects, commissioned services, field guides, and active discussions."
+          kicker="COMMUNITY DIRECTORY"
+          headline="Explore The Arena"
+          detail="Discover open opportunities, connect with members, browse community projects, commission services, read guides, and join discussions."
           metric={String(state.opportunities.length + state.projects.length + state.resources.length)}
           metricLabel="LIVE DIRECTORY ITEMS"
           actionLabel="View active Missions"
@@ -88,28 +98,43 @@ export default function ExplorePage() {
           onActionClick={() => navigate('/missions')}
         />
 
-        <div className="arena-tabs" role="tablist">
-          {(
-            [
-              ['opportunities', 'Opportunities', Briefcase],
-              ['people', 'People', Users],
-              ['projects', 'Projects', FolderGit2],
-              ['services', 'Services', Wrench],
-              ['resources', 'Resources', BookOpen],
-              ['discussions', 'Discussions', MessageSquare],
-            ] as const
-          ).map(([id, label, Icon]) => (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+          <div className="arena-tabs" role="tablist">
+            {(
+              [
+                ['opportunities', 'Opportunities', Briefcase],
+                ['people', 'People', Users],
+                ['projects', 'Projects', FolderGit2],
+                ['services', 'Services', Wrench],
+                ['resources', 'Resources', BookOpen],
+                ['discussions', 'Discussions', MessageSquare],
+              ] as const
+            ).map(([id, label, Icon]) => (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={tab === id}
+                className={`arena-tab ${tab === id ? 'active' : ''}`}
+                onClick={() => changeTab(id)}
+              >
+                <Icon size={14} /> {label}
+              </button>
+            ))}
+          </div>
+
+          {currentMember && (
             <button
-              key={id}
               type="button"
-              role="tab"
-              aria-selected={tab === id}
-              className={`arena-tab ${tab === id ? 'active' : ''}`}
-              onClick={() => changeTab(id)}
+              className="button button-bright"
+              disabled={isDiscussionActionBlocked}
+              title={isDiscussionActionBlocked ? `Discussion creation unlocks at Level ${DISCUSSION_UNLOCK_LEVEL}.` : undefined}
+              onClick={handlePrimaryAction}
             >
-              <Icon size={14} /> {label}
+              {primaryAction.kind === 'profile' ? <UserPen size={15} /> : <Plus size={15} />}
+              {primaryAction.label}
             </button>
-          ))}
+          )}
         </div>
 
         <div className="filter-bar">
@@ -146,7 +171,7 @@ export default function ExplorePage() {
                     tone={house?.tone ?? 'blue'}
                     kind={opp.kind}
                     kindTone="featured"
-                    meta={`${opp.organisationName} · House ${house?.name ?? opp.houseId}`}
+                    meta={`${opp.organisationName} · House ${getHouseName(opp.houseId, state.houses)}`}
                     title={opp.title}
                     description={opp.description}
                     tags={opp.tags}
@@ -178,9 +203,21 @@ export default function ExplorePage() {
                   </div>
                   <p><b>{m.headline}</b> — {m.bio}</p>
                   <div className="tag-row">
-                    {m.primaryHouseId && <span className="tag">Primary: {m.primaryHouseId}</span>}
+                    {m.primaryHouseId && <span className="tag">House {getHouseName(m.primaryHouseId, state.houses)}</span>}
                     {m.skills.slice(0, 3).map((s) => <span className="tag" key={s}>{s}</span>)}
                   </div>
+                  {currentMember?.id === m.id && (
+                    <div className="listing-bottom">
+                      <span className="listing-reward">Your public profile</span>
+                      <button
+                        type="button"
+                        className="button button-quiet button-small"
+                        onClick={() => navigate('/profile')}
+                      >
+                        Edit Profile
+                      </button>
+                    </div>
+                  )}
                 </article>
               ))}
           </div>
@@ -201,7 +238,7 @@ export default function ExplorePage() {
                     <div className="listing-top">
                       <span className={`org-mark ${house?.tone ?? 'blue'}`}>{house?.glyph ?? '⌘'}</span>
                       <span className="listing-kind kind-success">{proj.status}</span>
-                      <span className="tag">House {house?.name ?? proj.houseId}</span>
+                      <span className="tag">House {getHouseName(proj.houseId, state.houses)}</span>
                       <button
                         type="button"
                         className={`save-button ${saved ? 'saved' : ''}`}
@@ -236,7 +273,7 @@ export default function ExplorePage() {
                       <div className="listing-top">
                         <span className={`org-mark ${house?.tone ?? 'blue'}`}>{house?.glyph ?? '✳'}</span>
                         <span className="listing-kind kind-featured">{srv.categoryLabel}</span>
-                        <span className="tag">House {house?.name ?? srv.houseId}</span>
+                        <span className="tag">House {getHouseName(srv.houseId, state.houses)}</span>
                       </div>
                       <span className="listing-org">Provided by {provider?.displayName ?? 'Specialist'}</span>
                       <h3>{srv.title}</h3>
@@ -264,15 +301,15 @@ export default function ExplorePage() {
               <div className="arena-modal-backdrop" onClick={() => setCommissionTargetId(null)}>
                 <div className="arena-modal" onClick={(e) => e.stopPropagation()}>
                   <div className="arena-modal-header">
-                    <h3>Commission Service as Funded Mission</h3>
+                    <h3>Commission Service as Mission</h3>
                     <button type="button" className="button button-quiet button-small" onClick={() => setCommissionTargetId(null)}>Close</button>
                   </div>
                   <p style={{ fontSize: 13.5, color: '#52647d', marginTop: 0 }}>
-                    Commissioning reserves Spendable XP upfront in a real Mission escrow (Your Spendable XP: <b>{xpBalance.spendableXp} XP</b>).
+                    Commissioning reserves Spendable XP upfront for this mission (Your Spendable XP: <b>{xpBalance.spendableXp} XP</b>).
                   </p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                     <label className="arena-field">
-                      XP Reward Escrow
+                      XP Reward
                       <input type="number" min={25} max={1500} className="arena-input" value={commissionXp} onChange={(e) => setCommissionXp(e.target.value)} />
                     </label>
                     <label className="arena-field">
@@ -328,6 +365,16 @@ export default function ExplorePage() {
 
         {tab === 'discussions' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {!canCreateDiscussion && (
+              <div className="arena-notice arena-notice-info" role="status">
+                <span>
+                  <b>Discussion creation unlocks at Level {DISCUSSION_UNLOCK_LEVEL}.</b>{' '}
+                  {isSpartan
+                    ? `Your account is currently Level ${levelProgress.level}. You can read and reply to any discussion below.`
+                    : 'Sign in as a Spartan to reply, or reach Level 15 to start a new discussion.'}
+                </span>
+              </div>
+            )}
             {state.discussions
               .filter((d) => matchesHouse(d.houseId) && matchesQuery(`${d.title} ${d.topicTag} ${d.body}`))
               .map((disc) => {
@@ -336,7 +383,7 @@ export default function ExplorePage() {
                   <article className="dashboard-panel" key={disc.id}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
                       <span className="listing-kind kind-featured">{disc.topicTag}</span>
-                      {disc.houseId && <span className="tag">House {disc.houseId}</span>}
+                      {disc.houseId && <span className="tag">House {getHouseName(disc.houseId, state.houses)}</span>}
                       <span style={{ fontSize: 12, color: '#52647d' }}>Started by <b>{author?.displayName ?? 'Spartan'}</b></span>
                     </div>
                     <h3 style={{ margin: '0 0 6px' }}>{disc.title}</h3>
@@ -352,7 +399,7 @@ export default function ExplorePage() {
                         )
                       })}
 
-                      {currentMember && (
+                      {canReplyDiscussion && (
                         <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
                           <input
                             className="arena-input"
@@ -379,6 +426,6 @@ export default function ExplorePage() {
           </div>
         )}
       </div>
-    </PageScaffold>
+    </div>
   )
 }
